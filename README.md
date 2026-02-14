@@ -1,4 +1,5 @@
 # 🛡️ NEUROAUDIT - Security & IT Suite
+![Menu Preview](menu_preview.png)
 **Desarrollado por:** Felipe Soluciones IT  
 **Versión:** 4.1 Stable  
 

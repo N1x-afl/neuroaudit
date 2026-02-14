@@ -16,7 +16,7 @@
 ## 🔧 Instalación Rápida (One-Liner)
 Puedes instalar NEUROAUDIT ejecutando este comando en tu terminal:
 
-Posdata: Recuerda que en el parámetro TU_USUARIO cambiarlo por tu usuario real de linux
+**Posdata: Recuerda que en el parámetro TU_USUARIO cambiarlo por tu usuario real de linux**
 
 ```bash
 curl -O [https://raw.githubusercontent.com/TU_USUARIO/neuroaudit/main/neuroaudit.py](https://raw.githubusercontent.com/TU_USUARIO/neuroaudit/main/neuroaudit.py) && chmod +x neuroaudit.py && sudo mv neuroaudit.py /usr/local/bin/neuroaudit

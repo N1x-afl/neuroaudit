@@ -2,6 +2,7 @@
 ![Menu Preview](menu_preview.png)
 
 **Desarrollado por:** Felipe L
+
 **Versión:** 4.1 Stable  
 
 **NEUROAUDIT** es una herramienta integral de terminal diseñada para la gestión profesional de infraestructura Linux. Centraliza tareas de soporte técnico, auditoría de hardware y seguridad perimetral local en una interfaz intuitiva y potente.

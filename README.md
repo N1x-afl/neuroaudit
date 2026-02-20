@@ -33,9 +33,9 @@ El script detecta y utiliza comandos nativos para:
 
 ---
 
-## ⚙️ Instalación Rápida (One-Liner)
+## 🛡️ Instalación Segura y Verificación
+Como parte de nuestro compromiso con la ciberseguridad, recomendamos verificar la integridad del archivo antes de otorgar permisos de superusuario.
 
-Para desplegar la versión **Universal** en cualquier equipo, ejecutá:
-
-```bash
-curl -O [https://raw.githubusercontent.com/N1x-afl/neuroaudit/main/neuroaudit.py](https://raw.githubusercontent.com/N1x-afl/neuroaudit/main/neuroaudit.py) && chmod +x neuroaudit.py && sudo mv neuroaudit.py /usr/local/bin/neuroaudit
+1. **Descargar el script:**
+   ```bash
+   curl -O [https://raw.githubusercontent.com/N1x-afl/neuroaudit/main/neuroaudit.py](https://raw.githubusercontent.com/N1x-afl/neuroaudit/main/neuroaudit.py)

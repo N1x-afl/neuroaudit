@@ -13,7 +13,7 @@ VERSION = "4.5 Hardened"
 SYSTEM_NAME = "NEUROAUDIT - Security & IT Suite"
 DEVELOPER = "Felipe Soluciones IT"
 # Hash oficial de la versión (Este es el sello de garantía)
-OFFICIAL_HASH = "90ce1c46df53c6ef7a699e5762cc7614e1e8c2125eadeb49ee3d54a77b169064"
+OFFICIAL_HASH = "36e9809cd7c8bedf49062e28604e41c89179a7822023a5d2a1667d56f11f927a"
 
 class Colors:
     HEADER = '\033[95m'

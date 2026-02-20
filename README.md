@@ -6,36 +6,29 @@
 ---
 
 ## 🚀 Evolución Universal
-**NEUROAUDIT** ha evolucionado. En su versión 4.4, la suite ya no está limitada a una sola familia de Linux. Ahora cuenta con un **motor de detección de arquitectura** que adapta los comandos de mantenimiento y actualización según el gestor de paquetes nativo del sistema.
-
-Es la herramienta definitiva para técnicos que saltan entre servidores Debian, estaciones de trabajo Fedora o laboratorios en Arch Linux.
+**NEUROAUDIT** es una herramienta integral de terminal diseñada para técnicos de soporte y administradores de sistemas Linux. Cuenta con un **motor de detección de arquitectura** que adapta los comandos de mantenimiento y actualización según el gestor de paquetes nativo (APT, DNF o PACMAN).
 
 ## 🛠️ Capacidades de la Suite
 
-### 🖥️ Auditoría de Hardware e Identidad (Universal)
-* **Hardware Report:** Obtiene Serial Number/Tag, modelo de CPU y arquitectura.
-* **Métricas de Rendimiento:** Monitoreo de RAM (Total/Uso/Libre) y procesos críticos.
-* **Control de Estabilidad:** Reporte de **Uptime** detallado para verificar ciclos de reinicio.
+### 🖥️ Auditoría de Hardware e Identidad
+* **Hardware Report:** Obtiene Serial Number/Tag, modelo de CPU y arquitectura del Kernel.
+* **Métricas de Rendimiento:** Monitoreo de RAM y **Uptime** detallado.
 
-### 🔒 Seguridad y Red (Universal)
-* **Socket Audit:** Mapeo proactivo de puertos en estado `LISTEN`.
-* **Service Mapping:** Identificación de protocolos (SSH, HTTP, RPC, etc.) en IPv4 e IPv6 mediante resolución inversa.
+### 🔒 Seguridad y Red
+* **Socket Audit:** Mapeo de puertos en estado `LISTEN` e identificación de protocolos (SSH, HTTP, RPC, etc.) en IPv4 e IPv6.
 
-### 🔋 Salud de Componentes (Universal)
-* **Storage Health:** Filtrado inteligente de unidades físicas (SSD/NVMe) para un diagnóstico veraz de capacidad.
-* **Battery Analytics:** Monitoreo de nivel de desgaste químico con alertas visuales de estado.
-
-### 🧹 Mantenimiento Inteligente (Multi-Distro)
-El script detecta y utiliza comandos nativos para:
-* **Sistemas APT:** Debian, Ubuntu, Zorin OS, Mint.
-* **Sistemas DNF:** Fedora, RHEL, CentOS.
-* **Sistemas PACMAN:** Arch Linux, Manjaro.
+### 🔋 Salud de Componentes
+* **Storage & Battery:** Diagnóstico veraz de discos físicos y nivel de desgaste de batería.
 
 ---
 
-## ⚙️ Instalación Rápida (One-Liner)
+## 🛡️ Instalación Segura y Verificación (Protocolo N1x)
+Para garantizar la integridad y siguiendo buenas prácticas de ciberseguridad, se recomienda verificar el archivo antes de su ejecución global.
 
-Para desplegar la versión **Universal** en cualquier equipo, ejecutá:
+1. **Descargar el script:**
+   ```bash
+   curl -O https://raw.githubusercontent.com/N1x-afl/neuroaudit/main/neuroaudit.py && chmod +x neuroaudit.py && sudo mv neuroaudit.py /usr/local/bin/neuroaudit
 
-```bash
-curl -O [https://raw.githubusercontent.com/N1x-afl/neuroaudit/main/neuroaudit.py](https://raw.githubusercontent.com/N1x-afl/neuroaudit/main/neuroaudit.py) && chmod +x neuroaudit.py && sudo mv neuroaudit.py /usr/local/bin/neuroaudit
+## Validar Integridad (SHA-256 Checksum):
+echo "90ce1c46df53c6ef7a699e5762cc7614e1e8c2125eadeb49ee3d54a77b169064  neuroaudit.py" | sha256sum -c
+   

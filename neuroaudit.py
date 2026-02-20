@@ -8,7 +8,7 @@ import socket
 # ==========================================================
 # CONFIGURACIÓN TÉCNICA - GhostSec NEUROAUDIT
 # ==========================================================
-VERSION = "4.2 Stable"
+VERSION = "4.3 Multi-Distro"
 SYSTEM_NAME = "NEUROAUDIT - Security & IT Suite"
 DEVELOPER = "Felipe Soluciones IT"
 
@@ -20,6 +20,16 @@ class Colors:
     ERROR = '\033[91m'
     ENDC = '\033[0m'
     BOLD = '\033[1m'
+
+# Detección de Gestor de Paquetes
+def get_package_manager():
+    if os.path.exists("/usr/bin/apt-get"): return "APT"
+    if os.path.exists("/usr/bin/dnf"): return "DNF"
+    if os.path.exists("/usr/bin/pacman"): return "PACMAN"
+    if os.path.exists("/usr/bin/zypper"): return "ZYPPER"
+    return "UNKNOWN"
+
+PKG_MANAGER = get_package_manager()
 
 def show_banner():
     banner = f"""{Colors.SUCCESS}
@@ -33,13 +43,15 @@ def show_banner():
     │                S Y S T E M   A U D I T                 │
     └────────────────────────────────────────────────────────┘
     {Colors.ENDC}{Colors.BOLD} {SYSTEM_NAME} | v{VERSION} 
-     Powered by: {DEVELOPER}{Colors.ENDC}
+     Powered by: {DEVELOPER} | Distro: {PKG_MANAGER}{Colors.ENDC}
     """
     print(banner)
 
 def logger(message, type="INFO"):
     timestamp = datetime.datetime.now().strftime("%H:%M:%S")
     print(f"{getattr(Colors, type)}[{timestamp}] {message}{Colors.ENDC}")
+
+# --- FUNCIONES DE AUDITORÍA (UNIVERSALES) ---
 
 def get_sys_info():
     print(f"\n{Colors.BOLD}{'='*65}{Colors.ENDC}")
@@ -52,7 +64,6 @@ def get_sys_info():
     ram_u = subprocess.getoutput("free -h | grep Mem | awk '{print $3}'").strip()
     ram_l = subprocess.getoutput("free -h | grep Mem | awk '{print $4}'").strip()
     ip_loc = subprocess.getoutput("hostname -I | awk '{print $1}'").strip()
-    # NUEVO: Uptime detallado
     uptime = subprocess.getoutput("uptime -p").replace("up ", "")
     
     print(f"{Colors.BOLD}ID DISPOSITIVO:{Colors.ENDC}  {serial if serial else 'N/A'}")
@@ -63,16 +74,23 @@ def get_sys_info():
     print(f"{Colors.BOLD}PLATAFORMA:{Colors.ENDC}      {os.uname().sysname} {os.uname().release}")
     print(f"{Colors.BOLD}{'='*65}{Colors.ENDC}")
 
-def sys_update():
-    logger("Buscando actualizaciones de software (Upgrade)...", "INFO")
-    subprocess.run("sudo apt-get update && sudo apt-get upgrade -y", shell=True)
-    logger("Actualización de sistema finalizada.", "SUCCESS")
-
-def maintenance():
-    logger("Iniciando purga de residuos y optimización...", "INFO")
-    subprocess.run("sudo apt-get autoremove -y -qq && sudo apt-get autoclean -qq", shell=True)
-    subprocess.run("sudo dpkg --purge $(dpkg -l | grep '^rc' | awk '{print $2}') 2>/dev/null", shell=True)
-    logger("Mantenimiento y liberación de espacio completados.", "SUCCESS")
+def audit_ports():
+    logger("Escaneando sockets locales activos...", "WARNING")
+    print(f"\n{'PROTO':<10} {'PUERTO':<12} {'SERVICIO'}")
+    print("-" * 35)
+    output = subprocess.getoutput("sudo ss -tunlp | grep LISTEN | awk '{print $1, $5}'")
+    for line in output.split('\n'):
+        line = line.strip()
+        if not line: continue
+        parts = line.split()
+        if len(parts) >= 2:
+            proto = parts[0].upper()
+            raw_port = parts[1].split(':')[-1]
+            try:
+                service = socket.getservbyport(int(raw_port), proto.lower())
+            except:
+                service = "N/A"
+            print(f"{Colors.SUCCESS}{proto:<10} {raw_port:<12} [{service.upper()}]{Colors.ENDC}")
 
 def monitor_storage_health():
     print(f"\n{Colors.WARNING}--- UNIDADES DE DISCO FÍSICAS ---{Colors.ENDC}")
@@ -94,40 +112,45 @@ def monitor_storage_health():
         except: print(f"Capacidad: {cap}%")
     else: print("Batería no detectada.")
 
-def audit_ports():
-    logger("Escaneando sockets locales activos...", "WARNING")
-    print(f"\n{'PROTO':<10} {'PUERTO':<12} {'SERVICIO'}")
-    print("-" * 35)
-    output = subprocess.getoutput("sudo ss -tunlp | grep LISTEN | awk '{print $1, $5}'")
-    for line in output.split('\n'):
-        line = line.strip()
-        if not line: continue
-        parts = line.split()
-        if len(parts) >= 2:
-            proto = parts[0].upper()
-            raw_port = parts[1].split(':')[-1]
-            try:
-                service = socket.getservbyport(int(raw_port), proto.lower())
-            except:
-                service = "N/A"
-            print(f"{Colors.SUCCESS}{proto:<10} {raw_port:<12} [{service.upper()}]{Colors.ENDC}")
-
 def monitor_processes():
     print(f"\n{Colors.WARNING}--- CONSUMO DE RECURSOS CRÍTICOS (RAM) ---{Colors.ENDC}")
     print(subprocess.getoutput("ps aux --sort=-%mem | head -6 | tail -n +2 | awk '{print $2, $4, $11}'"))
+
+# --- FUNCIONES DE MANTENIMIENTO (DEPEDIENTES DE DISTRO) ---
+
+def sys_update():
+    if PKG_MANAGER != "APT":
+        logger(f"La actualización automática no está disponible para {PKG_MANAGER} aún.", "ERROR")
+        return
+    logger("Buscando actualizaciones de software (Upgrade)...", "INFO")
+    subprocess.run("sudo apt-get update && sudo apt-get upgrade -y", shell=True)
+    logger("Actualización de sistema finalizada.", "SUCCESS")
+
+def maintenance():
+    if PKG_MANAGER != "APT":
+        logger(f"La limpieza profunda no está disponible para {PKG_MANAGER} aún.", "ERROR")
+        return
+    logger("Iniciando purga de residuos y optimización...", "INFO")
+    subprocess.run("sudo apt-get autoremove -y -qq && sudo apt-get autoclean -qq", shell=True)
+    subprocess.run("sudo dpkg --purge $(dpkg -l | grep '^rc' | awk '{print $2}') 2>/dev/null", shell=True)
+    logger("Mantenimiento y liberación de espacio completados.", "SUCCESS")
+
+# --- MENÚ PRINCIPAL ---
 
 def main():
     while True:
         os.system('clear')
         show_banner()
         print(f"{Colors.BOLD}1.{Colors.ENDC} Auditoría de Hardware e Identidad")
-        print(f"{Colors.BOLD}2.{Colors.ENDC} Actualizar Repositorios y Sistema (Upgrade)")
-        print(f"{Colors.BOLD}3.{Colors.ENDC} Mantenimiento y Purga de Residuos")
+        print(f"{Colors.BOLD}2.{Colors.ENDC} Actualizar Sistema (Solo APT)")
+        print(f"{Colors.BOLD}3.{Colors.ENDC} Mantenimiento y Purga (Solo APT)")
         print(f"{Colors.BOLD}4.{Colors.ENDC} Monitor de Procesos en Tiempo Real")
         print(f"{Colors.BOLD}5.{Colors.ENDC} Auditoría de Seguridad (Puertos)")
         print(f"{Colors.BOLD}6.{Colors.ENDC} Salud de Batería y Almacenamiento")
         print(f"{Colors.BOLD}0.{Colors.ENDC} Salir")
+        
         op = input(f"\n{Colors.INFO}Seleccione operación: {Colors.ENDC}")
+
         if op == "1": get_sys_info()
         elif op == "2": sys_update()
         elif op == "3": maintenance()

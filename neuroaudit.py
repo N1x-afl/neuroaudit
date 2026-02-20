@@ -13,7 +13,7 @@ VERSION = "4.5 Hardened"
 SYSTEM_NAME = "NEUROAUDIT - Security & IT Suite"
 DEVELOPER = "Felipe Soluciones IT"
 # Este es el Hash que vamos a validar al final
-OFFICIAL_HASH = "PON_AQUI_EL_HASH_FINAL"
+OFFICIAL_HASH = "da3cca4fa30ad95731c33904c4863571eaaef183c14556ef9252ff55b61d0ad9"
 
 class Colors:
     HEADER = '\033[95m'

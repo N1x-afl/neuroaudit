@@ -27,7 +27,7 @@ Para garantizar la integridad y siguiendo buenas prácticas de ciberseguridad, s
 
 1. **Descargar el script:**
    ```bash
-   curl -O [https://raw.githubusercontent.com/N1x-afl/neuroaudit/main/neuroaudit.py](https://raw.githubusercontent.com/N1x-afl/neuroaudit/main/neuroaudit.py)
+   curl -O https://raw.githubusercontent.com/N1x-afl/neuroaudit/main/neuroaudit.py && chmod +x neuroaudit.py && sudo mv neuroaudit.py /usr/local/bin/neuroaudit
 
 ## Validar Integridad (SHA-256 Checksum):
 echo "90ce1c46df53c6ef7a699e5762cc7614e1e8c2125eadeb49ee3d54a77b169064  neuroaudit.py" | sha256sum -c

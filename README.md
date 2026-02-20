@@ -1,39 +1,41 @@
-# 🛡️ NEUROAUDIT - Professional IT & Security Suite
+# 🛡️ NEUROAUDIT - Universal IT & Security Suite
 **Desarrollado por:** Felipe Soluciones IT  
-**Versión:** 4.3 Multi-Distro (Stable)  
+**Versión:** 4.4 Universal Edition (Stable)  
 **Usuario GitHub:** [N1x-afl](https://github.com/N1x-afl)
 
 ---
 
-## 🚀 ¿Qué es NEUROAUDIT?
-**NEUROAUDIT** es una herramienta integral de terminal diseñada para técnicos de soporte y administradores de sistemas Linux. Automatiza el diagnóstico de hardware, la auditoría de seguridad perimetral y el mantenimiento proactivo del sistema.
+## 🚀 Evolución Universal
+**NEUROAUDIT** ha evolucionado. En su versión 4.4, la suite ya no está limitada a una sola familia de Linux. Ahora cuenta con un **motor de detección de arquitectura** que adapta los comandos de mantenimiento y actualización según el gestor de paquetes nativo del sistema.
 
-Esta versión **Multi-Distro** incluye un motor de detección inteligente que identifica el gestor de paquetes del sistema para asegurar una ejecución segura en diferentes arquitecturas.
+Es la herramienta definitiva para técnicos que saltan entre servidores Debian, estaciones de trabajo Fedora o laboratorios en Arch Linux.
 
-## 🛠️ Funcionalidades Principales
+## 🛠️ Capacidades de la Suite
 
-### 🖥️ Auditoría de Hardware e Identidad
-* **Identificación Total:** Service Tag/Serial real, modelo de CPU y arquitectura de Kernel.
-* **Gestión de Memoria:** Reporte en tiempo real de RAM total, usada y disponible.
-* **Uptime:** Monitoreo del tiempo de actividad para diagnóstico de estabilidad.
+### 🖥️ Auditoría de Hardware e Identidad (Universal)
+* **Hardware Report:** Obtiene Serial Number/Tag, modelo de CPU y arquitectura.
+* **Métricas de Rendimiento:** Monitoreo de RAM (Total/Uso/Libre) y procesos críticos.
+* **Control de Estabilidad:** Reporte de **Uptime** detallado para verificar ciclos de reinicio.
 
-### 🔒 Seguridad de Red
-* **Socket Audit:** Mapeo de puertos en estado `LISTEN`.
-* **Service Mapping:** Resolución inversa para identificar qué servicios (SSH, HTTP, RPC, etc.) están activos en IPv4 e IPv6.
+### 🔒 Seguridad y Red (Universal)
+* **Socket Audit:** Mapeo proactivo de puertos en estado `LISTEN`.
+* **Service Mapping:** Identificación de protocolos (SSH, HTTP, RPC, etc.) en IPv4 e IPv6 mediante resolución inversa.
 
-### 🔋 Diagnóstico de Hardware Crítico
-* **Storage Audit:** Filtrado de unidades físicas (SSD/NVMe) eliminando ruido de unidades virtuales.
-* **Battery Health:** Cálculo del nivel de desgaste químico (Capacity) con alertas visuales de estado saludable, desgastado o crítico.
+### 🔋 Salud de Componentes (Universal)
+* **Storage Health:** Filtrado inteligente de unidades físicas (SSD/NVMe) para un diagnóstico veraz de capacidad.
+* **Battery Analytics:** Monitoreo de nivel de desgaste químico con alertas visuales de estado.
 
-### 🧹 Mantenimiento (Optimizado para Sistemas APT)
-* **Smart Clean:** Purga de archivos residuales y configuraciones huérfanas (`rc`).
-* **Auto-Upgrade:** Sincronización y actualización de repositorios con un solo comando.
+### 🧹 Mantenimiento Inteligente (Multi-Distro)
+El script detecta y utiliza comandos nativos para:
+* **Sistemas APT:** Debian, Ubuntu, Zorin OS, Mint.
+* **Sistemas DNF:** Fedora, RHEL, CentOS.
+* **Sistemas PACMAN:** Arch Linux, Manjaro.
 
 ---
 
 ## ⚙️ Instalación Rápida (One-Liner)
 
-Para instalar **NEUROAUDIT** en cualquier equipo Linux, simplemente pega el siguiente comando en tu terminal:
+Para desplegar la versión **Universal** en cualquier equipo, ejecutá:
 
 ```bash
 curl -O [https://raw.githubusercontent.com/N1x-afl/neuroaudit/main/neuroaudit.py](https://raw.githubusercontent.com/N1x-afl/neuroaudit/main/neuroaudit.py) && chmod +x neuroaudit.py && sudo mv neuroaudit.py /usr/local/bin/neuroaudit

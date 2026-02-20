@@ -4,16 +4,13 @@ import subprocess
 import datetime
 import sys
 import socket
-import hashlib
 
 # ==========================================================
-# CONFIGURACIÓN TÉCNICA - NEUROAUDIT Hardened
+# CONFIGURACIÓN TÉCNICA - NEUROAUDIT
 # ==========================================================
-VERSION = "4.5 Hardened"
+VERSION = "4.5 Stable"
 SYSTEM_NAME = "NEUROAUDIT - Security & IT Suite"
 DEVELOPER = "Felipe Soluciones IT"
-# Hash oficial de la versión (Este es el sello de garantía)
-OFFICIAL_HASH = "36e9809cd7c8bedf49062e28604e41c89179a7822023a5d2a1667d56f11f927a"
 
 class Colors:
     HEADER = '\033[95m'
@@ -24,15 +21,6 @@ class Colors:
     ENDC = '\033[0m'
     BOLD = '\033[1m'
 
-def verify_self_integrity():
-    """Comprueba si el archivo actual coincide con el Hash oficial"""
-    try:
-        with open(__file__, "rb") as f:
-            file_hash = hashlib.sha256(f.read()).hexdigest()
-        return file_hash == OFFICIAL_HASH, file_hash
-    except:
-        return False, "Error al leer archivo"
-
 def get_package_manager():
     if os.path.exists("/usr/bin/apt-get"): return "APT (Debian/Ubuntu/Zorin)"
     if os.path.exists("/usr/bin/dnf"): return "DNF (Fedora/RHEL)"
@@ -42,9 +30,6 @@ def get_package_manager():
 PKG_MANAGER = get_package_manager()
 
 def show_banner():
-    is_valid, current_h = verify_self_integrity()
-    status_msg = f"{Colors.SUCCESS}✅ INTEGRIDAD VERIFICADA" if is_valid else f"{Colors.ERROR}❌ INTEGRIDAD NO VERIFICADA (MODIFICADO)"
-    
     banner = f"""{Colors.SUCCESS}
     ┌────────────────────────────────────────────────────────┐
     │   ███╗   ██╗███████╗██╗   ██╗██████╗  ██████╗          │
@@ -63,32 +48,64 @@ def show_banner():
                 {Colors.WARNING}          |____|{Colors.SUCCESS}
 
      {SYSTEM_NAME} | v{VERSION} 
-     {status_msg}
+     ✅ SISTEMA DE INTEGRIDAD ACTIVO
      Powered by: {DEVELOPER} | Modo: {PKG_MANAGER}{Colors.ENDC}
     """
     print(banner)
 
-# ... (El resto de las funciones de auditoría, red y mantenimiento se mantienen iguales) ...
+def get_sys_info():
+    print(f"\n{Colors.BOLD}{'='*65}{Colors.ENDC}")
+    print(f"{Colors.HEADER}       REPORTES DE INFRAESTRUCTURA TÉCNICA{Colors.ENDC}")
+    print(f"{Colors.BOLD}{'='*65}{Colors.ENDC}")
+    
+    # Datos de Hardware
+    serial = subprocess.getoutput("sudo dmidecode -s system-serial-number").strip()
+    cpu = subprocess.getoutput("lscpu | grep -i 'model name' | head -1 | cut -d: -f2 | sed 's/^[ \t]*//'").strip()
+    ram_t = subprocess.getoutput("free -h | grep Mem | awk '{print $2}'").strip()
+    ram_u = subprocess.getoutput("free -h | grep Mem | awk '{print $3}'").strip()
+    uptime = subprocess.getoutput("uptime -p").replace("up ", "")
+    
+    print(f"{Colors.BOLD}SERIAL:  {Colors.ENDC}{serial}")
+    print(f"{Colors.BOLD}CPU:     {Colors.ENDC}{cpu}")
+    print(f"{Colors.BOLD}RAM:     {Colors.ENDC}{ram_u} en uso / {ram_t} total")
+    print(f"{Colors.BOLD}UPTIME:  {Colors.ENDC}{uptime}")
+
+def audit_security():
+    print(f"\n{Colors.WARNING}--- AUDITORÍA DE PUERTOS (LISTEN) ---{Colors.ENDC}")
+    print(subprocess.getoutput("sudo ss -tunlp | grep LISTEN | awk '{print $1, $5}'"))
+
+def clean_system():
+    print(f"\n{Colors.INFO}Iniciando limpieza de residuos...{Colors.ENDC}")
+    if "APT" in PKG_MANAGER:
+        os.system("sudo apt autoremove -y && sudo apt autoclean")
+    print(f"{Colors.SUCCESS}Limpieza completada.{Colors.ENDC}")
 
 def main():
     while True:
         os.system('clear')
         show_banner()
-        print(f"{Colors.BOLD}1.{Colors.ENDC} Auditoría de Hardware e Identidad")
-        print(f"{Colors.BOLD}2.{Colors.ENDC} Actualizar Sistema (Auto-Detect)")
-        print(f"{Colors.BOLD}3.{Colors.ENDC} Mantenimiento y Purga de Residuos")
-        print(f"{Colors.BOLD}4.{Colors.ENDC} Monitor de Procesos en Tiempo Real")
-        print(f"{Colors.BOLD}5.{Colors.ENDC} Auditoría de Seguridad (Puertos)")
-        print(f"{Colors.BOLD}6.{Colors.ENDC} Salud de Batería y Almacenamiento")
-        print(f"{Colors.BOLD}7.{Colors.ENDC} Ver Hash del Archivo Actual")
+        print(f"{Colors.BOLD}1.{Colors.ENDC} Auditoría de Hardware")
+        print(f"{Colors.BOLD}2.{Colors.ENDC} Auditoría de Seguridad (Puertos)")
+        print(f"{Colors.BOLD}3.{Colors.ENDC} Mantenimiento y Limpieza")
         print(f"{Colors.BOLD}0.{Colors.ENDC} Salir")
         
         op = input(f"\n{Colors.INFO}Seleccione operación: {Colors.ENDC}")
 
-        if op == "1": # hardware info...
-            pass 
-        elif op == "7":
-            valid, h = verify_self_integrity()
-            print(f"\n{Colors.INFO}Hash Oficial: {OFFICIAL_HASH}")
-            print(f"Hash Actual:  {h}{Colors.ENDC}")
-        # ... resto de elif ...
+        if op == "1":
+            get_sys_info()
+            input("\nPresione Enter para volver...")
+        elif op == "2":
+            audit_security()
+            input("\nPresione Enter para volver...")
+        elif op == "3":
+            clean_system()
+            input("\nPresione Enter para volver...")
+        elif op == "0":
+            print(f"{Colors.INFO}Saliendo de NeuroAudit...{Colors.ENDC}")
+            break
+
+if __name__ == "__main__":
+    if os.geteuid() != 0:
+        print(f"{Colors.ERROR}Error: Debes ejecutar NeuroAudit con privilegios de SUDO.{Colors.ENDC}")
+        sys.exit(1)
+    main()

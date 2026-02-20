@@ -6,9 +6,9 @@ import sys
 import socket
 
 # ==========================================================
-# CONFIGURACIÓN TÉCNICA - GhostSec NEUROAUDIT
+# CONFIGURACIÓN TÉCNICA - NEUROAUDIT Universal
 # ==========================================================
-VERSION = "4.3 Multi-Distro"
+VERSION = "4.4 Universal"
 SYSTEM_NAME = "NEUROAUDIT - Security & IT Suite"
 DEVELOPER = "Felipe Soluciones IT"
 
@@ -21,12 +21,26 @@ class Colors:
     ENDC = '\033[0m'
     BOLD = '\033[1m'
 
-# Detección de Gestor de Paquetes
+# Diccionario de comandos por gestor de paquetes
+PACKAGE_COMMANDS = {
+    "APT": {
+        "update": "sudo apt-get update && sudo apt-get upgrade -y",
+        "clean": "sudo apt-get autoremove -y -qq && sudo apt-get autoclean -qq && sudo dpkg --purge $(dpkg -l | grep '^rc' | awk '{print $2}') 2>/dev/null"
+    },
+    "DNF": {
+        "update": "sudo dnf upgrade -y",
+        "clean": "sudo dnf autoremove -y && sudo dnf clean all"
+    },
+    "PACMAN": {
+        "update": "sudo pacman -Syu --noconfirm",
+        "clean": "sudo pacman -Sc --noconfirm && sudo pacman -Rns $(pacman -Qdtq) 2>/dev/null"
+    }
+}
+
 def get_package_manager():
     if os.path.exists("/usr/bin/apt-get"): return "APT"
     if os.path.exists("/usr/bin/dnf"): return "DNF"
     if os.path.exists("/usr/bin/pacman"): return "PACMAN"
-    if os.path.exists("/usr/bin/zypper"): return "ZYPPER"
     return "UNKNOWN"
 
 PKG_MANAGER = get_package_manager()
@@ -43,7 +57,7 @@ def show_banner():
     │                S Y S T E M   A U D I T                 │
     └────────────────────────────────────────────────────────┘
     {Colors.ENDC}{Colors.BOLD} {SYSTEM_NAME} | v{VERSION} 
-     Powered by: {DEVELOPER} | Distro: {PKG_MANAGER}{Colors.ENDC}
+     Powered by: {DEVELOPER} | Modo: {PKG_MANAGER}{Colors.ENDC}
     """
     print(banner)
 
@@ -51,7 +65,29 @@ def logger(message, type="INFO"):
     timestamp = datetime.datetime.now().strftime("%H:%M:%S")
     print(f"{getattr(Colors, type)}[{timestamp}] {message}{Colors.ENDC}")
 
-# --- FUNCIONES DE AUDITORÍA (UNIVERSALES) ---
+# --- FUNCIONES DE MANTENIMIENTO MULTIPLATAFORMA ---
+
+def sys_update():
+    if PKG_MANAGER == "UNKNOWN":
+        logger("No se detectó un gestor de paquetes compatible para actualización automática.", "ERROR")
+        return
+    
+    cmd = PACKAGE_COMMANDS[PKG_MANAGER]["update"]
+    logger(f"Iniciando actualización del sistema usando {PKG_MANAGER}...", "INFO")
+    subprocess.run(cmd, shell=True)
+    logger("Proceso de actualización finalizado.", "SUCCESS")
+
+def maintenance():
+    if PKG_MANAGER == "UNKNOWN":
+        logger("No se detectó un gestor de paquetes compatible para limpieza.", "ERROR")
+        return
+
+    cmd = PACKAGE_COMMANDS[PKG_MANAGER]["clean"]
+    logger(f"Iniciando tareas de limpieza profunda ({PKG_MANAGER})...", "INFO")
+    subprocess.run(cmd, shell=True)
+    logger("Mantenimiento y purga de residuos completados.", "SUCCESS")
+
+# --- FUNCIONES UNIVERSALES (HARDWARE / RED) ---
 
 def get_sys_info():
     print(f"\n{Colors.BOLD}{'='*65}{Colors.ENDC}")
@@ -88,8 +124,7 @@ def audit_ports():
             raw_port = parts[1].split(':')[-1]
             try:
                 service = socket.getservbyport(int(raw_port), proto.lower())
-            except:
-                service = "N/A"
+            except: service = "N/A"
             print(f"{Colors.SUCCESS}{proto:<10} {raw_port:<12} [{service.upper()}]{Colors.ENDC}")
 
 def monitor_storage_health():
@@ -116,25 +151,6 @@ def monitor_processes():
     print(f"\n{Colors.WARNING}--- CONSUMO DE RECURSOS CRÍTICOS (RAM) ---{Colors.ENDC}")
     print(subprocess.getoutput("ps aux --sort=-%mem | head -6 | tail -n +2 | awk '{print $2, $4, $11}'"))
 
-# --- FUNCIONES DE MANTENIMIENTO (DEPEDIENTES DE DISTRO) ---
-
-def sys_update():
-    if PKG_MANAGER != "APT":
-        logger(f"La actualización automática no está disponible para {PKG_MANAGER} aún.", "ERROR")
-        return
-    logger("Buscando actualizaciones de software (Upgrade)...", "INFO")
-    subprocess.run("sudo apt-get update && sudo apt-get upgrade -y", shell=True)
-    logger("Actualización de sistema finalizada.", "SUCCESS")
-
-def maintenance():
-    if PKG_MANAGER != "APT":
-        logger(f"La limpieza profunda no está disponible para {PKG_MANAGER} aún.", "ERROR")
-        return
-    logger("Iniciando purga de residuos y optimización...", "INFO")
-    subprocess.run("sudo apt-get autoremove -y -qq && sudo apt-get autoclean -qq", shell=True)
-    subprocess.run("sudo dpkg --purge $(dpkg -l | grep '^rc' | awk '{print $2}') 2>/dev/null", shell=True)
-    logger("Mantenimiento y liberación de espacio completados.", "SUCCESS")
-
 # --- MENÚ PRINCIPAL ---
 
 def main():
@@ -142,8 +158,8 @@ def main():
         os.system('clear')
         show_banner()
         print(f"{Colors.BOLD}1.{Colors.ENDC} Auditoría de Hardware e Identidad")
-        print(f"{Colors.BOLD}2.{Colors.ENDC} Actualizar Sistema (Solo APT)")
-        print(f"{Colors.BOLD}3.{Colors.ENDC} Mantenimiento y Purga (Solo APT)")
+        print(f"{Colors.BOLD}2.{Colors.ENDC} Actualizar Sistema (Auto-Detect)")
+        print(f"{Colors.BOLD}3.{Colors.ENDC} Mantenimiento y Purga de Residuos")
         print(f"{Colors.BOLD}4.{Colors.ENDC} Monitor de Procesos en Tiempo Real")
         print(f"{Colors.BOLD}5.{Colors.ENDC} Auditoría de Seguridad (Puertos)")
         print(f"{Colors.BOLD}6.{Colors.ENDC} Salud de Batería y Almacenamiento")

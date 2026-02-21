@@ -4,12 +4,12 @@ import subprocess
 import sys
 
 # ==========================================================
-# CONFIGURACIÓN TÉCNICA - NEUROAUDIT v4.7.1
+# CONFIGURACIÓN TÉCNICA - NEUROAUDIT v4.7.2
 # ==========================================================
-VERSION = "4.7.1 Thermal Master"
+VERSION = "4.7.2 Thermal Master"
 SYSTEM_NAME = "NEUROAUDIT - Security & IT Suite"
 DEVELOPER = "Felipe Soluciones IT"
-OFFICIAL_HASH = "felipe-soluciones-it-verified-v4.7.1"
+OFFICIAL_HASH = "felipe-soluciones-it-verified-v4.7.2"
 
 class Colors:
     HEADER = '\033[95m'
@@ -51,25 +51,28 @@ def show_banner():
 
 def get_sys_info():
     print(f"\n{Colors.BOLD}--- INFRAESTRUCTURA Y SALUD TÉRMICA ---{Colors.ENDC}")
-    cpu = subprocess.getoutput("grep -m 1 'model name' /proc/cpuinfo | cut -d: -f2 | sed 's/^[ \t]*//'").strip()
     
-    # Captura de Temperatura y lógica de Pasta Térmica
-    temp_raw = subprocess.getoutput("sensors | grep -E 'Package id 0|Core 0|temp1' | head -1 | awk '{print $4}'").replace('+', '').replace('°C', '')
+    # Comandos separados para evitar errores de comillas
+    cpu_cmd = "grep -m 1 'model name' /proc/cpuinfo | cut -d: -f2 | sed 's/^[ \t]*//'"
+    temp_cmd = "sensors | grep -E 'Package id 0|Core 0|temp1' | head -1 | awk '{print $4}'"
+    ram_cmd = "free -h | grep Mem | awk '{print $3}'"
     
+    cpu = subprocess.getoutput(cpu_cmd).strip()
+    temp_raw = subprocess.getoutput(temp_cmd).replace('+', '').replace('°C', '').strip()
+    ram_usage = subprocess.getoutput(ram_cmd).strip()
+    uptime_val = subprocess.getoutput("uptime -p")
+
+    # Lógica térmica
     try:
         temp_val = float(temp_raw)
         if temp_val >= 75:
-            temp_status = f"{Colors.ERROR}{temp_val}°C ⚠️ ALERTA: REQUIERE CAMBIO DE PASTA TÉRMICA{Colors.ENDC}"
+            temp_status = f"{Colors.ERROR}{temp_val}°C ⚠️ ALERTA: REQUIERE PASTA TÉRMICA{Colors.ENDC}"
         elif temp_val >= 60:
-            temp_status = f"{Colors.WARNING}{temp_val}°C (Temperatura elevada){Colors.ENDC}"
+            temp_status = f"{Colors.WARNING}{temp_val}°C (Elevada){Colors.ENDC}"
         else:
             temp_status = f"{Colors.SUCCESS}{temp_val}°C (Normal){Colors.ENDC}"
     except:
-        temp_status = f"{Colors.INFO}N/A (Verificar lm-sensors){Colors.ENDC}"
-
-    # FIX DE SINTAXIS AQUÍ (Comillas corregidas)
-    ram_usage = subprocess.getoutput("free -h | grep Mem | awk '{print $3}'")
-    uptime_val = subprocess.getoutput("uptime -p")
+        temp_status = f"{Colors.INFO}N/A{Colors.ENDC}"
 
     print(f"CPU:    {cpu}")
     print(f"TEMP:   {temp_status}")

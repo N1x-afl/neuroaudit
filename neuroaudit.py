@@ -2,23 +2,18 @@
 import os
 import subprocess
 import sys
+import re
 
 # ==========================================================
-# CONFIGURACIÓN TÉCNICA - NEUROAUDIT v4.8.0
+# CONFIGURACIÓN TÉCNICA - NEUROAUDIT v4.8.1
 # ==========================================================
-VERSION = "4.8.0 Full Tech Suite"
+VERSION = "4.8.1 Thermal Hardened"
 SYSTEM_NAME = "NEUROAUDIT - Security & IT Suite"
 DEVELOPER = "Felipe Soluciones IT"
-OFFICIAL_HASH = "felipe-soluciones-it-verified-v4.8.0"
 
 class Colors:
-    HEADER = '\033[95m'
-    SUCCESS = '\033[92m'
-    INFO = '\033[94m'
-    WARNING = '\033[93m'
-    ERROR = '\033[91m'
-    ENDC = '\033[0m'
-    BOLD = '\033[1m'
+    HEADER, SUCCESS, INFO = '\033[95m', '\033[92m', '\033[94m'
+    WARNING, ERROR, ENDC, BOLD = '\033[93m', '\033[91m', '\033[0m', '\033[1m'
 
 def verify_self_integrity():
     try:
@@ -28,9 +23,7 @@ def verify_self_integrity():
     except: return False
 
 def show_banner():
-    is_valid = verify_self_integrity()
-    status_msg = f"{Colors.SUCCESS}✅ INTEGRIDAD VERIFICADA" if is_valid else f"{Colors.ERROR}❌ INTEGRIDAD COMPROMETIDA"
-    
+    status = f"{Colors.SUCCESS}✅ INTEGRIDAD VERIFICADA" if verify_self_integrity() else f"{Colors.ERROR}❌ INTEGRIDAD COMPROMETIDA"
     banner = f"""{Colors.SUCCESS}
     ┌────────────────────────────────────────────────────────┐
     │   ███╗   ██╗███████╗██╗   ██╗██████╗  ██████╗          │
@@ -49,7 +42,7 @@ def show_banner():
                 {Colors.WARNING}          |____|{Colors.SUCCESS}
 
      {SYSTEM_NAME} | v{VERSION} 
-     {status_msg}
+     {status}
      Powered by: {DEVELOPER}{Colors.ENDC}
     """
     print(banner)
@@ -59,40 +52,31 @@ def get_sys_info():
     serial = subprocess.getoutput("sudo dmidecode -s system-serial-number").strip()
     cpu = subprocess.getoutput("grep -m 1 'model name' /proc/cpuinfo | cut -d: -f2").strip()
     
-    # Captura Regex Infalible para Dell/Intel
-    temp_raw = subprocess.getoutput("sensors | grep -E 'Package id 0|temp1' | grep -oP '[-+]?\d+\.\d+' | head -1").strip()
-    
-    ram = subprocess.getoutput("free -h | grep Mem | awk '{print $3}'").strip()
-    uptime = subprocess.getoutput("uptime -p")
-
+    # NUEVA CAPTURA DE FUERZA BRUTA (v4.8.1)
+    # Filtramos la salida de sensors buscando el Package o temp1 y extraemos el número con Regex puro de Python
     try:
-        temp_val = float(temp_raw)
-        if temp_val >= 75:
-            t_status = f"{Colors.ERROR}{temp_val}°C ⚠️ REVISAR PASTA TÉRMICA{Colors.ENDC}"
-        elif temp_val >= 60:
-            t_status = f"{Colors.WARNING}{temp_val}°C (Elevada){Colors.ENDC}"
+        sensors_output = subprocess.getoutput("sensors")
+        # Buscamos una línea que tenga Package o temp1 y luego un número decimal
+        match = re.search(r"(?:Package id 0|temp1|Core 0):\s+[\+\-]?(\d+\.\d+)", sensors_output)
+        if match:
+            temp_val = float(match.group(1))
+            if temp_val >= 75:
+                t_status = f"{Colors.ERROR}{temp_val}°C ⚠️ REVISAR PASTA TÉRMICA{Colors.ENDC}"
+            elif temp_val >= 60:
+                t_status = f"{Colors.WARNING}{temp_val}°C (Elevada){Colors.ENDC}"
+            else:
+                t_status = f"{Colors.SUCCESS}{temp_val}°C (Normal){Colors.ENDC}"
         else:
-            t_status = f"{Colors.SUCCESS}{temp_val}°C (Normal){Colors.ENDC}"
+            t_status = f"{Colors.INFO}N/A (No detectado){Colors.ENDC}"
     except:
-        t_status = f"{Colors.INFO}N/A (Verificar Sensores){Colors.ENDC}"
+        t_status = f"{Colors.INFO}N/A (Error){Colors.ENDC}"
 
+    ram = subprocess.getoutput("free -h | grep Mem | awk '{print $3}'").strip()
     print(f"SERIAL: {serial if serial else 'No detectable'}")
     print(f"CPU:    {cpu}")
     print(f"TEMP:   {t_status}")
     print(f"RAM:    {ram} en uso")
-    print(f"UPTIME: {uptime}")
-
-def maintenance():
-    print(f"\n{Colors.INFO}Iniciando mantenimiento...{Colors.ENDC}")
-    os.system("sudo apt update && sudo apt autoremove -y && sudo apt autoclean")
-    print(f"{Colors.SUCCESS}Mantenimiento finalizado.{Colors.ENDC}")
-
-def hardware_health():
-    print(f"\n{Colors.HEADER}--- DIAGNÓSTICO DE SALUD DE HARDWARE ---{Colors.ENDC}")
-    os.system("upower -i $(upower -e | grep 'BAT') | grep -E 'state|percentage|capacity' || echo 'Batería: N/A'")
-    print(f"\n{Colors.BOLD}Estado S.M.A.R.T. de Discos:{Colors.ENDC}")
-    # Intenta leer NVMe o SATA
-    os.system("sudo smartctl --all /dev/nvme0n1 | grep -E 'SMART overall-health|test_result' || sudo smartctl --all /dev/sda | grep -E 'SMART overall-health' || echo 'SMART: No disponible'")
+    print(f"UPTIME: {subprocess.getoutput('uptime -p')}")
 
 def main():
     while True:
@@ -103,18 +87,20 @@ def main():
         print(f"{Colors.BOLD}3.{Colors.ENDC} Monitor de Procesos (HTOP)")
         print(f"{Colors.BOLD}4.{Colors.ENDC} Auditoría de Seguridad (Puertos)")
         print(f"{Colors.BOLD}5.{Colors.ENDC} SALUD: Batería, Discos y SMART")
-        print(f"{Colors.BOLD}0.{Colors.ENDC} Salir")
-        
+        print(f"0. Salir")
         op = input(f"\n{Colors.INFO}Seleccione operación: {Colors.ENDC}")
         if op == "1": get_sys_info()
-        elif op == "2": maintenance()
+        elif op == "2": os.system("sudo apt update && sudo apt autoremove -y")
         elif op == "3": os.system("htop")
         elif op == "4": os.system("sudo ss -tunlp | grep LISTEN")
-        elif op == "5": hardware_health()
+        elif op == "5": 
+            print(f"\n{Colors.HEADER}--- SALUD ---{Colors.ENDC}")
+            os.system("upower -i $(upower -e | grep 'BAT') | grep -E 'percentage|capacity'")
+            os.system("sudo smartctl --all /dev/nvme0n1 | grep -E 'overall-health' || sudo smartctl --all /dev/sda | grep -E 'overall-health'")
         elif op == "0": break
-        input(f"\n{Colors.INFO}Presione Enter para volver...{Colors.ENDC}")
+        input(f"\nPresione Enter para volver...")
 
 if __name__ == "__main__":
     if os.geteuid() != 0:
-        print(f"{Colors.ERROR}Error: Ejecutar con sudo.{Colors.ENDC}"); sys.exit(1)
+        print(f"{Colors.ERROR}Ejecutar con sudo.{Colors.ENDC}"); sys.exit(1)
     main()

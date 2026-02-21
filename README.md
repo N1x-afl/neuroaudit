@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="menu_preview.png" width="600" title="NeuroAudit Preview">
+</p>
+
 # 🛡️ NEUROAUDIT - Universal IT & Security Suite
 **Desarrollado por:** Felipe Soluciones IT  
 **Versión:** 4.4 Universal Edition (Stable)  
@@ -29,8 +33,4 @@ Para garantizar la integridad y siguiendo buenas prácticas de ciberseguridad, s
    ```bash
    curl -O https://raw.githubusercontent.com/N1x-afl/neuroaudit/main/neuroaudit.py && chmod +x neuroaudit.py && sudo mv neuroaudit.py /usr/local/bin/neuroaudit
 
-2. **Validar Integridad (SHA-256 Checksum):**
-   Ejecuta el siguiente comando. Si el archivo es auténtico, responderá: `neuroaudit.py: La suma coincide`
-   ```bash
-   echo "8a6a65c7c79b8e6efd22079eba48f76c80e2f9c037d728fecababbbf08db7b66  neuroaudit.py" | sha256sum -c
-   
+

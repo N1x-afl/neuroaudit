@@ -1,36 +1,36 @@
 <p align="center">
-  <img src="menu_preview.png" width="600" title="NeuroAudit Preview">
+  <img src="menu.png" width="600" title="NeuroAudit Preview">
 </p>
 
-# 🛡️ NEUROAUDIT - Universal IT & Security Suite
-**Desarrollado por:** Felipe Soluciones IT  
-**Versión:** 4.4 Universal Edition (Stable)  
-**Usuario GitHub:** [N1x-afl](https://github.com/N1x-afl)
+# 🛡️ NEUROAUDIT - Security & IT Suite
+**Desarrollado por: Felipe Soluciones IT**  
+**Versión:** 4.6 Tech Edition  
+**Estado de Integridad:** ✅ Dinámicamente Verificado
 
 ---
 
-## 🚀 Evolución Universal
-**NEUROAUDIT** es una herramienta integral de terminal diseñada para técnicos de soporte y administradores de sistemas Linux. Cuenta con un **motor de detección de arquitectura** que adapta los comandos de mantenimiento y actualización según el gestor de paquetes nativo (APT, DNF o PACMAN).
+## 🚀 Descripción
+**NeuroAudit** es una suite integral de auditoría y mantenimiento para sistemas basados en Linux (especialmente optimizada para **Zorin OS, Ubuntu y Debian**). Esta herramienta nace de la necesidad de centralizar diagnósticos de hardware, seguridad de red y optimización del sistema en una sola interfaz ágil y profesional.
 
-## 🛠️ Capacidades de la Suite
+Ideal para técnicos de soporte, administradores de sistemas y entusiastas del *Self-Hosting / Homelab*.
 
-### 🖥️ Auditoría de Hardware e Identidad
-* **Hardware Report:** Obtiene Serial Number/Tag, modelo de CPU y arquitectura del Kernel.
-* **Métricas de Rendimiento:** Monitoreo de RAM y **Uptime** detallado.
 
-### 🔒 Seguridad y Red
-* **Socket Audit:** Mapeo de puertos en estado `LISTEN` e identificación de protocolos (SSH, HTTP, RPC, etc.) en IPv4 e IPv6.
-
-### 🔋 Salud de Componentes
-* **Storage & Battery:** Diagnóstico veraz de discos físicos y nivel de desgaste de batería.
 
 ---
 
-## 🛡️ Instalación Segura y Verificación (Protocolo N1x)
-Para garantizar la integridad y siguiendo buenas prácticas de ciberseguridad, se recomienda verificar el archivo antes de su ejecución global.
+## ✨ Características Principales
+* **🔍 Auditoría de Hardware:** Reporte detallado de CPU (con temperatura en tiempo real), memoria RAM, Kernel y número de serie del equipo.
+* **🔋 Diagnóstico de Salud (PRO):** Monitoreo de ciclos de batería y estado **S.M.A.R.T.** de unidades de almacenamiento para prevenir fallos de hardware.
+* **🛡️ Auditoría de Seguridad:** Escaneo rápido de puertos en estado *LISTEN* para detectar posibles brechas o servicios expuestos.
+* **⚙️ Mantenimiento Automatizado:** Limpieza profunda de residuos, purga de paquetes innecesarios y actualización inteligente del sistema según el gestor (APT/DNF/PACMAN).
+* **✅ Integridad Dinámica:** Sistema de validación interna que asegura que el script no ha sido modificado o dañado.
 
-1. **Descargar el script:**
-   ```bash
-   curl -O https://raw.githubusercontent.com/N1x-afl/neuroaudit/main/neuroaudit.py && chmod +x neuroaudit.py && sudo mv neuroaudit.py /usr/local/bin/neuroaudit
+---
 
+## 🛠️ Instalación Rápida (One-Liner)
+
+Para instalar NeuroAudit de manera global en tu sistema, ejecutá el siguiente comando en tu terminal:
+
+```bash
+curl -L -O "[https://raw.githubusercontent.com/N1x-afl/neuroaudit/main/neuroaudit.py](https://raw.githubusercontent.com/N1x-afl/neuroaudit/main/neuroaudit.py)" && chmod +x neuroaudit.py && sudo mv neuroaudit.py /usr/local/bin/neuroaudit
 

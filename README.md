@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="menu_preview.png" width="600" title="NeuroAudit Preview">
+  <img src="menu.png" width="600" title="NeuroAudit Preview">
 </p>
 
 # 🛡️ NEUROAUDIT - Security & IT Suite

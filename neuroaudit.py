@@ -55,7 +55,7 @@ def get_sys_info():
     # Captura de datos (Serial restaurado)
     serial = subprocess.getoutput("sudo dmidecode -s system-serial-number").strip()
     cpu = subprocess.getoutput("grep -m 1 'model name' /proc/cpuinfo | cut -d: -f2").strip()
-    temp_raw = subprocess.getoutput("sensors | grep -E 'Package id 0|Core 0|temp1' | head -1 | awk '{print $4}'").replace('+', '').replace('°C', '').strip()
+    temp_raw = subprocess.getoutput("sensors | grep -E 'Package id 0|temp1' | head -1 | awk -F: '{print $2}' | tr -d '+°C ' | cut -d'(' -f1").strip()
     ram_usage = subprocess.getoutput("free -h | grep Mem | awk '{print $3}'").strip()
     uptime_val = subprocess.getoutput("uptime -p")
 

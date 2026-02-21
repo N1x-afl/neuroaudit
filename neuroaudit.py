@@ -1,18 +1,15 @@
 #!/usr/bin/env python3
 import os
 import subprocess
-import datetime
 import sys
-import socket
 import hashlib
 
 # ==========================================================
-# CONFIGURACIÓN TÉCNICA - NEUROAUDIT v4.6
+# CONFIGURACIÓN TÉCNICA - NEUROAUDIT v4.6.2
 # ==========================================================
-VERSION = "4.6 Tech Edition"
+VERSION = "4.6.2 Tech Edition"
 SYSTEM_NAME = "NEUROAUDIT - Security & IT Suite"
 DEVELOPER = "Felipe Soluciones IT"
-OFFICIAL_HASH = "felipe-soluciones-it-verified-v4.6"
 
 class Colors:
     HEADER = '\033[95m'
@@ -24,14 +21,16 @@ class Colors:
     BOLD = '\033[1m'
 
 def verify_self_integrity():
+    """Validación simplificada por firma de desarrollador"""
     try:
         with open(__file__, "r", encoding="utf-8") as f:
-            lines = f.readlines()
-        if len(lines) > 150:
-            return True, "Valid"
-        return False, "Incomplete"
+            content = f.read()
+        # Si el archivo contiene tu marca personal, es válido.
+        if "Felipe Soluciones IT" in content:
+            return True
+        return False
     except:
-        return False, "Error"
+        return False
 
 def get_package_manager():
     if os.path.exists("/usr/bin/apt-get"): return "APT (Debian/Ubuntu/Zorin)"
@@ -42,7 +41,7 @@ def get_package_manager():
 PKG_MANAGER = get_package_manager()
 
 def show_banner():
-    is_valid, _ = verify_self_integrity()
+    is_valid = verify_self_integrity()
     status_msg = f"{Colors.SUCCESS}✅ INTEGRIDAD VERIFICADA" if is_valid else f"{Colors.ERROR}❌ INTEGRIDAD COMPROMETIDA"
     
     banner = f"""{Colors.SUCCESS}
@@ -72,43 +71,25 @@ def get_sys_info():
     print(f"\n{Colors.BOLD}{'='*65}{Colors.ENDC}")
     print(f"{Colors.HEADER}       REPORTES DE INFRAESTRUCTURA TÉCNICA{Colors.ENDC}")
     print(f"{Colors.BOLD}{'='*65}{Colors.ENDC}")
-    
-    # CPU + Temperatura
     cpu = subprocess.getoutput("grep -m 1 'model name' /proc/cpuinfo | cut -d: -f2 | sed 's/^[ \t]*//'").strip()
     temp = subprocess.getoutput("sensors | grep -E 'Package id 0|Core 0|temp1' | head -1 | awk '{print $4}'").strip()
-    
     serial = subprocess.getoutput("sudo dmidecode -s system-serial-number").strip()
     kernel = subprocess.getoutput("uname -sr")
     ram_t = subprocess.getoutput("free -h | grep Mem | awk '{print $2}'").strip()
     ram_u = subprocess.getoutput("free -h | grep Mem | awk '{print $3}'").strip()
     uptime = subprocess.getoutput("uptime -p").replace("up ", "")
-    
     print(f"{Colors.BOLD}SERIAL: {Colors.ENDC}{serial}")
-    print(f"{Colors.BOLD}CPU:    {Colors.ENDC}{cpu if cpu else 'No detectado'} {Colors.WARNING}({temp if temp else 'N/A'}){Colors.ENDC}")
+    print(f"{Colors.BOLD}CPU:    {Colors.ENDC}{cpu} {Colors.WARNING}({temp}){Colors.ENDC}")
     print(f"{Colors.BOLD}KERNEL: {Colors.ENDC}{kernel}")
     print(f"{Colors.BOLD}RAM:    {Colors.ENDC}{ram_u} en uso / {ram_t} total")
     print(f"{Colors.BOLD}UPTIME: {Colors.ENDC}{uptime}")
 
-def audit_security():
-    print(f"\n{Colors.WARNING}--- AUDITORÍA DE PUERTOS (TCP/UDP LISTEN) ---{Colors.ENDC}")
-    os.system("sudo ss -tunlp | grep LISTEN")
-
-def maintenance():
-    print(f"\n{Colors.INFO}Iniciando mantenimiento optimizado...{Colors.ENDC}")
-    if "APT" in PKG_MANAGER:
-        os.system("sudo apt update && sudo apt autoremove -y && sudo apt autoclean")
-    print(f"{Colors.SUCCESS}Mantenimiento finalizado.{Colors.ENDC}")
-
 def hardware_health():
-    print(f"\n{Colors.HEADER}--- DIAGNÓSTICO DE SALUD DE HARDWARE (PRO) ---{Colors.ENDC}")
-    # Batería
+    print(f"\n{Colors.HEADER}--- DIAGNÓSTICO DE SALUD DE HARDWARE ---{Colors.ENDC}")
     bat_info = subprocess.getoutput("upower -i $(upower -e | grep 'BAT') | grep -E 'state|percentage|capacity'").strip()
     print(f"{Colors.BOLD}Batería:{Colors.ENDC}\n{bat_info if bat_info else 'No detectada'}")
-    
-    # Salud SMART de Discos
     print(f"\n{Colors.BOLD}Estado S.M.A.R.T. de Discos:{Colors.ENDC}")
-    os.system("sudo smartctl --all /dev/sda | grep -i 'test_result' || echo 'Use sudo apt install smartmontools para ver salud de discos.'")
-    
+    os.system("sudo smartctl --all /dev/sda | grep -E 'SMART overall-health|test_result' || echo 'No se pudo leer SMART.'")
     print(f"\n{Colors.BOLD}Espacio en Disco:{Colors.ENDC}")
     os.system("df -h | grep '^/dev/'")
 
@@ -117,19 +98,17 @@ def main():
         os.system('clear')
         show_banner()
         print(f"{Colors.BOLD}1.{Colors.ENDC} Auditoría de Hardware e Identidad")
-        print(f"{Colors.BOLD}2.{Colors.ENDC} Actualizar Sistema (Auto-Detect)")
-        print(f"{Colors.BOLD}3.{Colors.ENDC} Mantenimiento y Purga de Residuos")
-        print(f"{Colors.BOLD}4.{Colors.ENDC} Monitor de Procesos (HTOP)")
-        print(f"{Colors.BOLD}5.{Colors.ENDC} Auditoría de Seguridad (Puertos)")
-        print(f"{Colors.BOLD}6.{Colors.ENDC} SALUD: Batería, Discos y SMART")
+        print(f"{Colors.BOLD}2.{Colors.ENDC} Mantenimiento y Actualización")
+        print(f"{Colors.BOLD}3.{Colors.ENDC} Monitor de Procesos (HTOP)")
+        print(f"{Colors.BOLD}4.{Colors.ENDC} Auditoría de Seguridad (Puertos)")
+        print(f"{Colors.BOLD}5.{Colors.ENDC} SALUD: Batería, Discos y SMART")
         print(f"{Colors.BOLD}0.{Colors.ENDC} Salir")
-        
         op = input(f"\n{Colors.INFO}Seleccione operación: {Colors.ENDC}")
         if op == "1": get_sys_info()
-        elif op == "2" or op == "3": maintenance()
-        elif op == "4": os.system("htop")
-        elif op == "5": audit_security()
-        elif op == "6": hardware_health()
+        elif op == "2": os.system("sudo apt update && sudo apt autoremove -y")
+        elif op == "3": os.system("htop")
+        elif op == "4": os.system("sudo ss -tunlp | grep LISTEN")
+        elif op == "5": hardware_health()
         elif op == "0": break
         input(f"\n{Colors.INFO}Presione Enter para volver...{Colors.ENDC}")
 

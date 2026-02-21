@@ -3,7 +3,8 @@
 </p>
 
 # 🛡️ NEUROAUDIT - Security & IT Suite
-**Desarrollado por: Felipe Soluciones IT** **Versión:** 4.6 Tech Edition  
+**Desarrollado por: Felipe Soluciones IT** 
+**Versión:** 4.6 Tech Edition  
 **Estado de Integridad:** ✅ Dinámicamente Verificado
 
 ---

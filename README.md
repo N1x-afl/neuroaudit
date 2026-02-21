@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="menu_preview.png" width="600" title="NeuroAudit Preview">
+</p>
+
 # 🛡️ NEUROAUDIT - Universal IT & Security Suite
 **Desarrollado por:** Felipe Soluciones IT  
 **Versión:** 4.4 Universal Edition (Stable)  

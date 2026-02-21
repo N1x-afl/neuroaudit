@@ -107,4 +107,46 @@ def battery_storage():
     print(f"\n{Colors.INFO}--- SALUD DE BATERÍA Y DISCOS ---{Colors.ENDC}")
     # Batería
     bat_info = subprocess.getoutput("upower -i $(upower -e | grep 'BAT') | grep -E 'state|percentage|capacity'").strip()
-    print(bat_info if bat_info else "
+    print(bat_info if bat_info else "Batería no detectada (posible PC de escritorio)")
+    
+    print(f"\n{Colors.BOLD}Espacio en Disco:{Colors.ENDC}")
+    os.system("df -h | grep '^/dev/'")
+
+def main():
+    while True:
+        os.system('clear')
+        show_banner()
+        print(f"{Colors.BOLD}1.{Colors.ENDC} Auditoría de Hardware e Identidad")
+        print(f"{Colors.BOLD}2.{Colors.ENDC} Actualizar Sistema (Auto-Detect)")
+        print(f"{Colors.BOLD}3.{Colors.ENDC} Mantenimiento y Purga de Residuos")
+        print(f"{Colors.BOLD}4.{Colors.ENDC} Monitor de Procesos (HTOP)")
+        print(f"{Colors.BOLD}5.{Colors.ENDC} Auditoría de Seguridad (Puertos)")
+        print(f"{Colors.BOLD}6.{Colors.ENDC} Salud de Batería y Almacenamiento")
+        print(f"{Colors.BOLD}0.{Colors.ENDC} Salir")
+        
+        op = input(f"\n{Colors.INFO}Seleccione operación: {Colors.ENDC}")
+        
+        if op == "1":
+            get_sys_info()
+        elif op == "2" or op == "3":
+            maintenance()
+        elif op == "4":
+            os.system("htop")
+        elif op == "5":
+            audit_security()
+        elif op == "6":
+            battery_storage()
+        elif op == "0":
+            print(f"{Colors.INFO}Cerrando NeuroAudit. ¡Hasta luego Felipe!{Colors.ENDC}")
+            break
+        else:
+            print(f"{Colors.ERROR}Opción no válida.{Colors.ENDC}")
+            
+        input(f"\n{Colors.INFO}Presione Enter para volver al menú...{Colors.ENDC}")
+
+if __name__ == "__main__":
+    # Verificación de privilegios ROOT
+    if os.geteuid() != 0:
+        print(f"{Colors.ERROR}ERROR: NeuroAudit requiere privilegios de superusuario (sudo).{Colors.ENDC}")
+        sys.exit(1)
+    main()

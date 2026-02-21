@@ -4,12 +4,12 @@ import subprocess
 import sys
 
 # ==========================================================
-# CONFIGURACIÓN TÉCNICA - NEUROAUDIT v4.7
+# CONFIGURACIÓN TÉCNICA - NEUROAUDIT v4.7.1
 # ==========================================================
-VERSION = "4.7 Thermal Master"
+VERSION = "4.7.1 Thermal Master"
 SYSTEM_NAME = "NEUROAUDIT - Security & IT Suite"
 DEVELOPER = "Felipe Soluciones IT"
-OFFICIAL_HASH = "felipe-soluciones-it-verified-v4.7"
+OFFICIAL_HASH = "felipe-soluciones-it-verified-v4.7.1"
 
 class Colors:
     HEADER = '\033[95m'
@@ -25,7 +25,7 @@ def verify_self_integrity():
         with open(__file__, "r", encoding="utf-8") as f:
             lines = f.readlines()
         content = "".join([l for l in lines if "OFFICIAL_HASH =" not in l])
-        if len(lines) > 150 and "Felipe Soluciones IT" in content:
+        if len(lines) > 100 and "Felipe Soluciones IT" in content:
             return True
         return False
     except: return False
@@ -67,10 +67,14 @@ def get_sys_info():
     except:
         temp_status = f"{Colors.INFO}N/A (Verificar lm-sensors){Colors.ENDC}"
 
+    # FIX DE SINTAXIS AQUÍ (Comillas corregidas)
+    ram_usage = subprocess.getoutput("free -h | grep Mem | awk '{print $3}'")
+    uptime_val = subprocess.getoutput("uptime -p")
+
     print(f"CPU:    {cpu}")
     print(f"TEMP:   {temp_status}")
-    print(f"RAM:    {subprocess.getoutput(\"free -h | grep Mem | awk '{print $3}'\")} en uso")
-    print(f"UPTIME: {subprocess.getoutput('uptime -p')}")
+    print(f"RAM:    {ram_usage} en uso")
+    print(f"UPTIME: {uptime_val}")
 
 def maintenance():
     print(f"\n{Colors.INFO}Iniciando mantenimiento...{Colors.ENDC}")

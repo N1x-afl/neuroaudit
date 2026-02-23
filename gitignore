@@ -1,0 +1,40 @@
+# Entorno virtual
+.venv/
+venv/
+env/
+
+# Reportes generados
+NEUROAUDIT_Reportes/
+*.pdf
+*.html
+*.json
+*.yaml
+*.xml
+*.csv
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+
+# PyInstaller
+*.spec
+
+# Sistema
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo

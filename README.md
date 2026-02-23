@@ -64,7 +64,7 @@ Funciona en **Linux** (Debian/Ubuntu/Mint, Fedora/RHEL, Arch/Manjaro) y **Window
 
 **1. Clonar el repositorio:**
 ```bash
-git clone https://github.com/tu-usuario/neuroaudit.git
+git clone https://github.com/N1x-afl/neuroaudit.git
 cd neuroaudit
 ```
 

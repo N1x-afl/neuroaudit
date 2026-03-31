@@ -1,8 +1,15 @@
 #!/usr/bin/env python3
 # ===========================================================
-# NEUROAUDIT v6.2 - Multiplataforma (Windows + Linux)
+# NEUROAUDIT v6.3 - Multiplataforma (Windows + Linux)
 # Security & IT Suite
 # Developed by: Felipe Soluciones IT
+# ===========================================================
+# CAMBIOS EN v6.3:
+# - FIX: Corrección en conteo de paquetes actualizables (APT)
+# - NEW: Sistema de auto-actualización completo desde GitHub
+# - NEW: Opción en menú de mantenimiento para actualizar NEUROAUDIT
+# - NEW: Backup automático antes de actualizaciones
+# - MEJORA: Mejor detección de actualizaciones disponibles
 # ===========================================================
 # USO:
 #   Linux   : sudo python3 neuroaudit.py
@@ -10,6 +17,7 @@
 #   Flags   : --no-banner   (oculta logo ASCII)
 #             --cliente     (output simplificado para clientes)
 #             --setup       (instalador de dependencias)
+#             --update      (auto-actualizar desde GitHub)
 # ===========================================================
 
 import os
@@ -40,12 +48,15 @@ import shutil
 import hashlib
 import threading
 import time
+import urllib.request
+import tempfile
 
-VERSION      = "6.2"
+VERSION      = "6.3"
 SYSTEM_NAME  = "NEUROAUDIT - Security & IT Suite"
 DEVELOPER    = "Felipe Soluciones IT"
 GITHUB_USER  = "N1x-afl"
 GITHUB_REPO  = "neuroaudit"
+GITHUB_RAW_URL = f"https://raw.githubusercontent.com/{GITHUB_USER}/{GITHUB_REPO}/main/neuroaudit.py"
 SO           = platform.system()
 
 # ── Flags de línea de comandos ──────────────────────────────
@@ -199,10 +210,129 @@ def show_update_notice():
         print()
         cprint(f"  ╔══════════════════════════════════════════════════════╗", C.YELLOW)
         cprint(f"  ║  Nueva versión disponible: v{_update_result['version']:<26}║", C.YELLOW)
-        cprint(f"  ║  Actualizar: git pull  (en la carpeta del proyecto)  ║", C.YELLOW)
-        cprint(f"  ║  {_update_result['url'][:52]:<52}  ║", C.YELLOW)
+        cprint(f"  ║  Actualizar: Opción 2 -> 8 del menú principal        ║", C.YELLOW)
+        cprint(f"  ║  O ejecutar: python3 neuroaudit.py --update          ║", C.YELLOW)
         cprint(f"  ╚══════════════════════════════════════════════════════╝", C.YELLOW)
         print()
+
+def auto_update_neuroaudit():
+    """
+    Nueva función: Actualiza automáticamente NEUROAUDIT desde GitHub.
+    - Descarga la versión más reciente
+    - Crea backup del archivo actual
+    - Reemplaza el archivo
+    - Permite rollback si algo falla
+    """
+    section("AUTO-ACTUALIZACIÓN DE NEUROAUDIT")
+    
+    # Esperar a que termine el chequeo de versión
+    max_wait = 50
+    wait_count = 0
+    while not _update_result["checked"] and wait_count < max_wait:
+        time.sleep(0.1)
+        wait_count += 1
+    
+    if not _update_result["disponible"]:
+        cprint("\n  Ya estás usando la última versión de NEUROAUDIT.", C.GREEN)
+        return
+    
+    nueva_version = _update_result["version"]
+    cprint(f"\n  Versión actual  : {C.YELLOW}v{VERSION}{C.RESET}", C.RESET)
+    cprint(f"  Nueva versión   : {C.GREEN}v{nueva_version}{C.RESET}", C.RESET)
+    cprint(f"  URL de descarga : {C.CYAN}{GITHUB_RAW_URL}{C.RESET}\n", C.RESET)
+    
+    resp = input(f"  {C.CYAN}¿Deseas actualizar ahora? (S/N): {C.RESET}").strip().lower()
+    if resp != "s":
+        cprint("  Actualización cancelada.", C.GRAY)
+        return
+    
+    try:
+        # Obtener la ruta del script actual
+        script_path = os.path.abspath(__file__)
+        backup_path = script_path + f".backup.v{VERSION}"
+        
+        # Crear backup
+        cprint("\n  [1/4] Creando backup del archivo actual...", C.YELLOW)
+        shutil.copy2(script_path, backup_path)
+        cprint(f"  ✓ Backup creado: {backup_path}", C.GREEN)
+        
+        # Descargar nueva versión
+        cprint("\n  [2/4] Descargando nueva versión desde GitHub...", C.YELLOW)
+        req = urllib.request.Request(GITHUB_RAW_URL, headers={"User-Agent": "neuroaudit-updater"})
+        
+        with urllib.request.urlopen(req, timeout=30) as response:
+            nuevo_contenido = response.read()
+        
+        if len(nuevo_contenido) < 5000:
+            raise Exception("Archivo descargado parece incompleto o corrupto")
+        
+        cprint(f"  ✓ Descargado exitosamente ({len(nuevo_contenido)} bytes)", C.GREEN)
+        
+        # Guardar en archivo temporal primero
+        cprint("\n  [3/4] Validando archivo descargado...", C.YELLOW)
+        temp_path = script_path + ".temp"
+        
+        with open(temp_path, "wb") as f:
+            f.write(nuevo_contenido)
+        
+        # Verificar que el archivo es válido
+        with open(temp_path, "rb") as f:
+            contenido_temp = f.read()
+            if b"Felipe Soluciones IT" not in contenido_temp or b"NEUROAUDIT" not in contenido_temp:
+                raise Exception("Archivo descargado no parece ser NEUROAUDIT válido")
+        
+        cprint(f"  ✓ Archivo validado correctamente", C.GREEN)
+        
+        # Reemplazar archivo original
+        cprint("\n  [4/4] Instalando nueva versión...", C.YELLOW)
+        
+        try:
+            os.replace(temp_path, script_path)
+        except Exception:
+            with open(temp_path, "rb") as src:
+                with open(script_path, "wb") as dst:
+                    dst.write(src.read())
+            os.remove(temp_path)
+        
+        # Verificar permisos de ejecución en Linux
+        if SO == "Linux":
+            os.chmod(script_path, 0o755)
+        
+        cprint(f"  ✓ NEUROAUDIT actualizado correctamente", C.GREEN)
+        
+        print()
+        cprint("  ╔══════════════════════════════════════════════════════╗", C.GREEN)
+        cprint("  ║                                                      ║", C.GREEN)
+        cprint(f"  ║  ✓  Actualización completada: v{VERSION} → v{nueva_version:<10}  ║", C.GREEN)
+        cprint("  ║                                                      ║", C.GREEN)
+        cprint("  ║  IMPORTANTE: Reinicia NEUROAUDIT para usar la       ║", C.GREEN)
+        cprint("  ║  nueva versión. El backup se guardó en:             ║", C.GREEN)
+        cprint(f"  ║  {os.path.basename(backup_path):<52}  ║", C.GREEN)
+        cprint("  ║                                                      ║", C.GREEN)
+        cprint("  ╚══════════════════════════════════════════════════════╝", C.GREEN)
+        print()
+        
+        resp = input(f"  {C.CYAN}¿Reiniciar NEUROAUDIT ahora? (S/N): {C.RESET}").strip().lower()
+        if resp == "s":
+            cprint("\n  Reiniciando NEUROAUDIT...\n", C.CYAN)
+            os.execv(sys.executable, [sys.executable, script_path] + sys.argv[1:])
+        
+    except Exception as e:
+        cprint(f"\n  ✗ ERROR durante la actualización: {e}", C.RED)
+        
+        if os.path.exists(backup_path):
+            resp = input(f"\n  {C.CYAN}¿Restaurar desde el backup? (S/N): {C.RESET}").strip().lower()
+            if resp == "s":
+                try:
+                    shutil.copy2(backup_path, script_path)
+                    cprint("  ✓ Backup restaurado exitosamente", C.GREEN)
+                except Exception as e2:
+                    cprint(f"  ✗ Error al restaurar backup: {e2}", C.RED)
+        
+        cprint("\n  Para actualizar manualmente:", C.YELLOW)
+        cprint(f"    git clone https://github.com/{GITHUB_USER}/{GITHUB_REPO}.git", C.GRAY)
+        cprint("    o descarga desde:", C.GRAY)
+        cprint(f"    {_update_result.get('url', 'GitHub')}", C.GRAY)
 
 # ════════════════════════════════════════════════════════════
 #  BANNER
@@ -436,8 +566,13 @@ class Linux:
         cprint("  [5]  Limpiar logs del sistema (journalctl)",    C.RESET)
         cprint("  [6]  Limpiar cache de usuario (~/.cache)",      C.RESET)
         cprint("  [7]  TODO lo anterior",                         C.CYAN)
+        cprint("  [8]  Actualizar NEUROAUDIT desde GitHub",       C.GREEN)
         print()
         op = input(f"  {C.CYAN}Seleccione operacion: {C.RESET}").strip()
+
+        if op == "8":
+            auto_update_neuroaudit()
+            return
 
         hacer = set()
         if op == "7":   hacer = {"1","2","3","4","5","6"}
@@ -449,18 +584,38 @@ class Linux:
         if "1" in hacer:
             cprint("\n  [ Actualizaciones del Sistema ]", C.YELLOW)
             if pkg == "APT":
+                cprint("  Actualizando índice de paquetes...", C.CYAN)
                 os.system("sudo apt update")
-                upgradable = run("apt list --upgradable 2>/dev/null | grep -c upgradable")
-                cprint(f"  Paquetes a actualizar: {upgradable}", C.CYAN)
-                if upgradable.strip() != "0":
-                    resp = input(f"  {C.CYAN}Instalar actualizaciones? (S/N): {C.RESET}").strip().lower()
+                
+                # FIX CRÍTICO: Mejora en el conteo de paquetes actualizables
+                upgradable_output = run("apt list --upgradable 2>/dev/null")
+                
+                # Filtrar línea de encabezado "Listing..."
+                upgradable_lines = [line for line in upgradable_output.split('\n') 
+                                  if line and not line.startswith('Listing')]
+                upgradable_count = len(upgradable_lines)
+                
+                cprint(f"\n  Paquetes disponibles para actualizar: {upgradable_count}", C.CYAN)
+                
+                if upgradable_count > 0:
+                    # Mostrar algunos paquetes (máximo 10)
+                    cprint("\n  Algunos paquetes actualizables:", C.GRAY)
+                    for line in upgradable_lines[:10]:
+                        pkg_name = line.split('/')[0] if '/' in line else line
+                        print(f"    - {pkg_name}")
+                    if upgradable_count > 10:
+                        cprint(f"    ... y {upgradable_count - 10} más", C.GRAY)
+                    
+                    print()
+                    resp = input(f"  {C.CYAN}¿Instalar actualizaciones? (S/N): {C.RESET}").strip().lower()
                     if resp == "s":
+                        cprint("\n  Instalando actualizaciones...", C.YELLOW)
                         os.system("sudo apt upgrade -y")
-                        cprint("  Sistema actualizado.", C.GREEN)
+                        cprint("  ✓ Sistema actualizado.", C.GREEN)
                     else:
-                        cprint("  Actualizacion omitida.", C.GRAY)
+                        cprint("  Actualización omitida.", C.GRAY)
                 else:
-                    cprint("  El sistema ya esta actualizado.", C.GREEN)
+                    cprint("  ✓ El sistema ya está actualizado.", C.GREEN)
             elif pkg == "DNF":
                 upgradable = run("dnf check-update 2>/dev/null | grep -c '^[a-zA-Z]'")
                 cprint(f"  Paquetes a actualizar: {upgradable}", C.CYAN)
@@ -2134,6 +2289,10 @@ def main():
 
     if "--setup" in sys.argv:
         run_setup()
+        sys.exit(0)
+
+    if "--update" in sys.argv:
+        auto_update_neuroaudit()
         sys.exit(0)
 
     # Lanzar chequeo de actualizaciones en segundo plano

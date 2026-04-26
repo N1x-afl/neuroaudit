@@ -4,7 +4,7 @@
 # Developed by: Felipe Soluciones IT
 # ===========================================================
 # ESTADO: FULL OPERATIVO (1-10)
-# - FIX: Diagnóstico de Pasta Térmica automático en Opción 1.
+# - FIX: Diagnóstico de Pasta Térmica avanzado con Uptime.
 # - FIX: Escaneo de Red Local (Opción 9) con detección de IP real.
 # - FIX: Header completo con Kernel, RAM y Serial.
 # ===========================================================
@@ -70,9 +70,11 @@ class Linux:
     @staticmethod
     def sys_info():
         section("INFRAESTRUCTURA Y SALUD TERMICA")
+        # Fix Serial: Detección robusta
         serial = run("sudo dmidecode -s system-serial-number 2>/dev/null") or run("cat /sys/class/dmi/id/product_serial 2>/dev/null")
         cpu = run("grep -m1 'model name' /proc/cpuinfo | cut -d: -f2").strip()
         ram = run("free -h | grep Mem | awk '{print $3\" / \"$2}'")
+        uptime = run("uptime -p")
         
         sensors_out = run("sensors 2>/dev/null")
         m = re.search(r"(?:Package id 0|Core 0|temp1):\s+[+\-]?(\d+\.\d+)", sensors_out)
@@ -82,13 +84,20 @@ class Linux:
         print(f"  CPU    : {cpu}")
         print(f"  TEMP   : {temp_cpu}°C" if temp_cpu else "  TEMP   : N/A")
         print(f"  RAM    : {ram} en uso")
+        print(f"  UPTIME : {uptime}")
         
-        # Diagnóstico de Pasta Térmica (Integrado)
+        # Diagnóstico de Pasta Térmica Avanzado
         if temp_cpu:
             cprint("\n  [ Diagnóstico de Pasta Térmica ]", C.YELLOW)
-            if temp_cpu < 65: cprint(f"  ✓ Estado Óptimo: {temp_cpu}°C", C.GREEN)
-            elif temp_cpu < 80: cprint(f"  ⚠ Temperatura Elevada: {temp_cpu}°C (Limpieza sugerida)", C.YELLOW)
-            else: cprint(f"  ✗ CRÍTICO: {temp_cpu}°C (Cambio de pasta urgente)", C.RED)
+            if temp_cpu < 60:
+                cprint(f"  ✓ Estado Óptimo: {temp_cpu}°C", C.GREEN)
+                cprint("    La disipación funciona correctamente.", C.GRAY)
+            elif temp_cpu < 80:
+                cprint(f"  ⚠ Temperatura Elevada: {temp_cpu}°C", C.YELLOW)
+                cprint("    Sugerencia: Limpiar ductos de ventilación y ventiladores.", C.GRAY)
+            else:
+                cprint(f"  ✗ CRÍTICO: {temp_cpu}°C", C.RED, bold=True)
+                cprint("    Acción: Cambio de pasta térmica URGENTE (Arctic MX-4 sugerida).", C.RED)
 
     @staticmethod
     def maintenance():
@@ -129,11 +138,9 @@ class Linux:
     @staticmethod
     def network_scan():
         section("ESCANEO DE RED LOCAL")
-        # Detección dinámica de la subred para que no falle
         ip_local = run("hostname -I | awk '{print $1}'")
         if not ip_local: 
             cprint("  Error: No se pudo detectar IP local.", C.RED); return
-        
         subred = ip_local.rsplit('.', 1)[0] + ".0/24"
         cprint(f"  Escaneando subred: {subred}...\n", C.YELLOW)
         os.system(f"sudo nmap -sn {subred}")

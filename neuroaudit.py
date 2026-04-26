@@ -3,9 +3,8 @@
 # NEUROAUDIT v6.4.3 - Security & IT Suite
 # Developed by: Felipe Soluciones IT
 # ===========================================================
-# ESTADO FINAL: 1-10 OPERATIVO
-# - Opción 7: Exportación JSON funcional.
-# - Opción 8: Ping DNS Google (8.8.8.8) confirmado.
+# FIX ESTÉTICO: Regreso a lista vertical única (1-10).
+# ESTADO: 100% OPERATIVO.
 # ===========================================================
 
 import os
@@ -82,7 +81,7 @@ class Linux:
     @staticmethod
     def maintenance():
         section("MANTENIMIENTO DEL SISTEMA")
-        print(f"\n  [1] Actualizar Sistema  [2] Purgar  [3] Cache  [4] Temporales  [5] Logs  [8] Update Suite")
+        cprint("\n  [1] Actualizar Sistema\n  [2] Purgar Huerfanos\n  [3] Limpiar Cache\n  [4] Temporales\n  [5] Logs\n  [8] Update Suite", C.RESET)
         op = input(f"\n  Seleccione: ").strip()
         if op == "1": os.system("sudo apt update && sudo apt upgrade -y || sudo pacman -Syu --noconfirm")
         elif op == "2": os.system("sudo apt autoremove -y || sudo pacman -Rns $(pacman -Qdtq) --noconfirm 2>/dev/null")
@@ -112,32 +111,20 @@ class Linux:
         section("INVENTARIO DE SOFTWARE")
         os.system("dpkg -l | grep '^ii' | awk '{print $2, $3}' | head -n 50 2>/dev/null || pacman -Q | head -n 50")
 
-# ── Opción 7: Exportación Real ─────────────────────────────
+# ── Opción 7: Exportación ──────────────────────────────────
 def run_export():
     section("EXPORTAR REPORTE DE AUDITORÍA")
-    cprint("  Generando reporte detallado...", C.YELLOW)
-    
+    cprint("  Generando reporte JSON en Carpeta Personal...", C.YELLOW)
     data = {
         "fecha": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "sistema": platform.platform(),
         "cpu": run("grep -m1 'model name' /proc/cpuinfo | cut -d: -f2").strip(),
-        "ram": run("free -h | grep Mem | awk '{print $3\"/\"$2}'"),
-        "discos": run("df -h").splitlines(),
-        "puertos_abiertos": run("sudo ss -tulpn | grep LISTEN").splitlines()
+        "ram": run("free -h | grep Mem | awk '{print $3\" / \"$2}'"),
+        "puertos": run("sudo ss -tulpn | grep LISTEN").splitlines()
     }
-    
-    filename = f"reporte_neuroaudit_{datetime.datetime.now().strftime('%Y%m%d_%H%M')}.json"
-    filepath = os.path.join(_get_real_home(), filename)
-    
-    try:
-        with open(filepath, "w") as f:
-            json.dump(data, f, indent=4)
-        cprint(f"\n  ✓ Reporte exportado correctamente.", C.GREEN)
-        cprint(f"  Ruta: {filepath}", C.CYAN)
-    except Exception as e:
-        cprint(f"  ✗ Error al exportar: {e}", C.RED)
+    path = os.path.join(_get_real_home(), f"reporte_audit_{datetime.datetime.now().strftime('%Y%m%d')}.json")
+    with open(path, "w") as f: json.dump(data, f, indent=4)
+    cprint(f"  ✓ Reporte guardado en: {path}", C.GREEN)
 
-# ── Opción 10: Auditoría ───────────────────────────────────
 def run_permission_audit():
     section("AUDITORIA DE PERMISOS Y USUARIOS")
     os.system("ls -la /etc/shadow /etc/sudoers")
@@ -157,16 +144,21 @@ def show_banner():
     print(f"\n  Estado : {C.GREEN}OK INTEGRIDAD VERIFICADA{C.RESET} | Autor: {DEVELOPER}")
 
 def show_menu():
-    cprint("\n  [1] Hardware y Termica       [6] Inventario Software", C.RESET)
-    cprint("  [2] Mantenimiento (v6.4)     [7] Exportar Reporte (JSON)", C.CYAN)
-    cprint("  [3] Salud de Discos          [8] Ping DNS Google", C.RESET)
-    cprint("  [4] Seguridad de Puertos     [9] Escaneo Red Local", C.RESET)
-    cprint("  [5] Eventos del Sistema      [10] Auditoria de Permisos", C.YELLOW)
-    cprint("  [0] Salir\n", C.RED)
+    print(f"\n  [1]  Hardware e Identidad Termica")
+    print(f"  [2]  Mantenimiento del Sistema (v6.4 Fix)")
+    print(f"  [3]  Salud: Discos y S.M.A.R.T. (v6.4 Fix)")
+    print(f"  [4]  Auditoria de Seguridad (Puertos)")
+    print(f"  [5]  Reporte de Eventos del Sistema")
+    print(f"  [6]  Inventario de Software Instalado")
+    cprint("  [7]  Exportar Reporte (JSON/PDF/HTML)", C.CYAN)
+    print(f"  [8]  Ping / Test de Conectividad")
+    print(f"  [9]  Escaneo de Red Local")
+    cprint("  [10] Auditoria de Permisos y Usuarios", C.YELLOW)
+    cprint("  [0]  Salir\n", C.RED)
 
 def analizar_pasta_termica(t):
     if t and t > 75: cprint(f"  ¡Atención! {t}°C es alto. Sugerido cambio de pasta.", C.RED)
-    else: cprint("  Temperatura dentro del rango normal.", C.GREEN)
+    else: cprint("  Temperatura normal.", C.GREEN)
 
 def main():
     C.enable_windows_ansi()

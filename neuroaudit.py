@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 # ===========================================================
-# NEUROAUDIT v6.4.2 - Multiplataforma (Windows + Linux)
-# Security & IT Suite
+# NEUROAUDIT v6.4.3 - Security & IT Suite
 # Developed by: Felipe Soluciones IT
 # ===========================================================
-# ESTADO: 100% OPERATIVO (OPCIONES 1 A 10 VINCULADAS)
+# ESTADO: 100% OPERATIVO - MENÚS VERTICALES UNIFICADOS
 # ===========================================================
 
 import os
@@ -21,7 +20,7 @@ import time
 import urllib.request
 
 # ── Configuración Core ─────────────────────────────────────
-VERSION      = "6.4.2"
+VERSION      = "6.4.3"
 SYSTEM_NAME  = "NEUROAUDIT - Security & IT Suite"
 DEVELOPER    = "Felipe Soluciones IT"
 GITHUB_USER  = "N1x-afl"
@@ -64,34 +63,23 @@ def _get_real_home():
     if sudo_user: return run(f"getent passwd {sudo_user} | cut -d: -f6")
     return os.path.expanduser("~")
 
-# ── Lógica de Actualización ────────────────────────────────
-_update_result = {"disponible": False, "version": None}
-
-def _check_update_background():
-    try:
-        url = f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/releases/latest"
-        req = urllib.request.Request(url, headers={"User-Agent": "neuroaudit"})
-        with urllib.request.urlopen(req, timeout=4) as resp:
-            data = json.loads(resp.read().decode())
-        tag = data.get("tag_name", "").lstrip("v")
-        def p_v(v): return [int(x) for x in re.sub(r'[^0-9.]', '', v).split('.')]
-        if tag and p_v(tag) > p_v(VERSION):
-            _update_result["disponible"], _update_result["version"] = True, tag
-    except: pass
-
-# ── Módulos Linux (Funcionalidad Completa) ─────────────────
+# ── Módulos Linux ──────────────────────────────────────────
 class Linux:
     @staticmethod
     def sys_info():
         section("INFRAESTRUCTURA Y SALUD TERMICA")
+        # Fix Serial Number (Método robusto)
+        serial = run("sudo dmidecode -s system-serial-number 2>/dev/null") or run("cat /sys/class/dmi/id/product_serial 2>/dev/null")
         cpu = run("grep -m1 'model name' /proc/cpuinfo | cut -d: -f2").strip()
         ram = run("free -h | grep Mem | awk '{print $3\" / \"$2}'")
+        
         sensors_out = run("sensors 2>/dev/null")
         m = re.search(r"(?:Package id 0|Core 0|temp1):\s+[+\-]?(\d+\.\d+)", sensors_out)
         temp_cpu = float(m.group(1)) if m else None
         
+        print(f"  SERIAL : {serial if serial else 'No detectable'}")
         print(f"  CPU    : {cpu}")
-        print(f"  TEMP   : {temp_cpu}°C" if temp_cpu else "  TEMP   : N/A (lm-sensors no detectado)")
+        print(f"  TEMP   : {temp_cpu}°C" if temp_cpu else "  TEMP   : N/A")
         print(f"  RAM    : {ram} en uso")
         
         guardar_temp_historial(temp_cpu)
@@ -104,47 +92,55 @@ class Linux:
     @staticmethod
     def maintenance():
         section("MANTENIMIENTO DEL SISTEMA")
-        print("\n  [1] Actualizar Sistema  [2] Purgar Huerfanos  [3] Limpiar Cache  [4] Temporales (v6.4)  [8] Update Suite")
-        sub_op = input(f"\n  Seleccione operación: ").strip()
+        # Menú Vertical Restaurado
+        print(f"\n  [1] Actualizar Sistema (APT/PACMAN)")
+        print(f"  [2] Purgar paquetes huerfanos")
+        print(f"  [3] Limpiar cache del gestor")
+        print(f"  [4] Gestión de Temporales (v6.4 Fix)")
+        print(f"  [5] Limpiar logs (journalctl >7d)")
+        print(f"  [8] Actualizar NEUROAUDIT")
+        print(f"  [0] Volver al menú principal")
+        
+        sub_op = input(f"\n  {C.CYAN}Seleccione operación: {C.RESET}").strip()
         
         if sub_op == "1":
-            cprint("\n  [ Actualizando paquetes... ]", C.YELLOW)
             os.system("sudo apt update && sudo apt upgrade -y || sudo pacman -Syu --noconfirm")
         elif sub_op == "2":
             os.system("sudo apt autoremove -y || sudo pacman -Rns $(pacman -Qdtq) --noconfirm 2>/dev/null")
-            cprint("  ✓ Limpieza de huerfanos completada.", C.GREEN)
         elif sub_op == "3":
             os.system("sudo apt clean || sudo pacman -Sc --noconfirm")
-            cprint("  ✓ Cache liberada.", C.GREEN)
         elif sub_op == "4":
-            print("\n  [1] Ver tamaño  [2] Limpieza Segura (>7d)  [3] Limpieza Profunda (>2d)")
-            sel = input("  Opción: ").strip()
+            section("GESTIÓN DE TEMPORALES")
+            print(f"  [1] Ver tamaño actual")
+            print(f"  [2] Limpieza Segura (> 7 días)")
+            print(f"  [3] Limpieza Profunda (> 2 días)")
+            sel = input(f"\n  Seleccione: ").strip()
             if sel == "2": os.system("sudo find /tmp /var/tmp -type f -atime +7 -delete 2>/dev/null")
             elif sel == "3": os.system("sudo find /tmp /var/tmp -type f -atime +2 -delete 2>/dev/null")
-            else: cprint(f"  Tamaño: {run('du -sh /tmp 2>/dev/null')}", C.GRAY)
+            else: cprint(f"  Tamaño actual: {run('du -sh /tmp 2>/dev/null')}", C.GRAY)
+        elif sub_op == "5":
+            os.system("sudo journalctl --vacuum-time=7d")
         elif sub_op == "8":
             auto_update_neuroaudit()
 
     @staticmethod
     def disk_health():
         section("SALUD: DISCOS Y S.M.A.R.T.")
-        cprint("\n  [ Uso de Particiones ]", C.YELLOW)
         os.system("df -h | grep -E 'Filesystem|/dev/sd|/dev/nvme|/$'")
         cprint("\n  [ Estado S.M.A.R.T. Autodetectado ]", C.YELLOW)
         disks = run("lsblk -dn -o NAME | grep -E 'sd|nvme'").splitlines()
         for d in disks:
             cprint(f"\n  Disco /dev/{d}:", C.CYAN)
-            os.system(f"sudo smartctl -H /dev/{d} | grep -E 'overall-health|result|PASSED|FAILED' || echo '  Sin datos SMART.'")
+            os.system(f"sudo smartctl -H /dev/{d} | grep -E 'overall-health|result|PASSED|FAILED' || echo '  Sin datos.'")
 
     @staticmethod
     def security_audit():
-        section("AUDITORIA DE SEGURIDAD (PUERTOS)")
-        cprint("\n  [ Servicios Escuchando en el NB ]", C.YELLOW)
+        section("AUDITORIA DE PUERTOS")
         os.system("sudo ss -tulpn | grep LISTEN")
 
     @staticmethod
     def event_report():
-        section("REPORTE DE EVENTOS DEL SISTEMA")
+        section("REPORTE DE EVENTOS")
         os.system("sudo journalctl -p err -n 15 --no-pager")
 
     @staticmethod
@@ -154,23 +150,23 @@ class Linux:
         count = run("dpkg -l | grep '^ii' | wc -l 2>/dev/null || pacman -Q | wc -l")
         cprint(f"\n  Total paquetes instalados: {count}", C.YELLOW)
 
-# ── Auditoría Unificada (Opción 10) ─────────────────────────
+# ── Utilidades ─────────────────────────────────────────────
+
 def run_permission_audit():
     section("AUDITORIA INTEGRAL DE SEGURIDAD")
-    cprint("\n  [ 1. Escaneo de Puertos Locales ]", C.YELLOW)
+    cprint("\n  [ 1. Escaneo de Puertos y Servicios ]", C.YELLOW)
     os.system("sudo ss -tulpn | grep LISTEN")
     cprint("\n  [ 2. Permisos en Archivos Críticos ]", C.YELLOW)
-    os.system("ls -la /etc/shadow /etc/sudoers /etc/passwd")
+    os.system("ls -la /etc/shadow /etc/sudoers")
     cprint("\n  [ 3. Usuarios con capacidad de SUDO ]", C.YELLOW)
     print(run("grep -Po '^sudo:.*:\\K.*|^wheel:.*:\\K.*' /etc/group") or "Solo root")
 
-# ── Funciones de Apoyo ─────────────────────────────────────
 def analizar_pasta_termica(temp):
-    section("DIAGNOSTICO DE PASTA TERMICA")
+    section("DIAGNOSTICO PASTA TERMICA")
     if not temp: return
     if temp < 65: cprint(f"  {temp}°C -> ESTADO ÓPTIMO", C.GREEN)
-    elif temp < 80: cprint(f"  {temp}°C -> ELEVADA (Limpieza sugerida)", C.YELLOW)
-    else: cprint(f"  {temp}°C -> CRÍTICO (Cambio URGENTE)", C.RED)
+    elif temp < 80: cprint(f"  {temp}°C -> ELEVADA", C.YELLOW)
+    else: cprint(f"  {temp}°C -> CRÍTICA (Sugerido cambio)", C.RED)
 
 def guardar_temp_historial(t):
     try:
@@ -190,11 +186,10 @@ def mostrar_historial_temps():
     except: print("    Sin historial.")
 
 def auto_update_neuroaudit():
-    if not _update_result["disponible"]: return
-    cprint(f"\n  Actualizando a v{_update_result['version']}...", C.YELLOW)
+    cprint(f"\n  Buscando actualizaciones en GitHub...", C.YELLOW)
     try:
         with urllib.request.urlopen(GITHUB_RAW_URL) as r:
-            with open(__file__, "wb") as f: f.write(r.read())
+            with open(os.path.abspath(__file__), "wb") as f: f.write(r.read())
         cprint("  ✓ Actualizado. Reinicie NEUROAUDIT.", C.GREEN); sys.exit()
     except: pass
 
@@ -232,7 +227,6 @@ def show_menu():
 
 def main():
     C.enable_windows_ansi()
-    threading.Thread(target=_check_update_background, daemon=True).start()
     M = Linux
     acciones = {
         "1": M.sys_info, "2": M.maintenance, "3": M.disk_health, "4": M.security_audit,

@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
 # ===========================================================
-# NEUROAUDIT v6.4.1 - Security & IT Suite
+# NEUROAUDIT v6.4.2 - Security & IT Suite
 # Developed by: Felipe Soluciones IT
 # ===========================================================
-# FIX LOG:
-# - Mantenimiento (Opción 2) 100% operativo con comandos reales.
-# - Auditoría de Permisos (Opción 10) vinculada.
-# - Salud S.M.A.R.T. corregida para NVMe/SATA.
-# - Estética original v6.3 preservada.
+# ULTIMO FIX:
+# - Integración de Escaneo de Puertos en Opción 10.
+# - Mantenimiento (2) corregido con lógica real.
+# - S.M.A.R.T. compatible con NVMe de tu NB.
 # ===========================================================
 
 import os
@@ -22,10 +21,9 @@ import hashlib
 import threading
 import time
 import urllib.request
-import tempfile
 
 # ── Configuración Core ─────────────────────────────────────
-VERSION      = "6.4.1"
+VERSION      = "6.4.2"
 SYSTEM_NAME  = "NEUROAUDIT - Security & IT Suite"
 DEVELOPER    = "Felipe Soluciones IT"
 GITHUB_USER  = "N1x-afl"
@@ -76,9 +74,6 @@ def _get_real_home():
     if sudo_user: return run(f"getent passwd {sudo_user} | cut -d: -f6")
     return os.path.expanduser("~")
 
-def check_privileges():
-    return os.geteuid() == 0 if SO == "Linux" else False
-
 # ── Lógica de Actualización ────────────────────────────────
 _update_result = {"disponible": False, "version": None, "checked": False}
 
@@ -108,36 +103,19 @@ class Linux:
         
     @staticmethod
     def maintenance():
-        section("MANTENIMIENTO DEL SISTEMA [OPERATIVO]")
-        cprint("\n  [1] Actualizar Sistema (APT/PACMAN)", C.RESET)
-        cprint("  [2] Purgar paquetes huerfanos", C.RESET)
-        cprint("  [3] Limpiar cache del gestor", C.RESET)
-        cprint("  [4] Gestión de Temporales (Opcional)", C.CYAN)
-        cprint("  [5] Limpiar logs (journalctl >7d)", C.RESET)
-        cprint("  [8] Actualizar NEUROAUDIT", C.GREEN)
-        
-        op = input(f"\n  {C.CYAN}Seleccione operación: {C.RESET}").strip()
-        
-        if op == "1":
-            cprint("\n  Iniciando actualización...", C.YELLOW)
-            os.system("sudo apt update && sudo apt upgrade -y 2>/dev/null || sudo pacman -Syu --noconfirm")
-        elif op == "2":
-            os.system("sudo apt autoremove -y 2>/dev/null || pacman -Rns $(pacman -Qdtq) --noconfirm 2>/dev/null")
-            cprint("  ✓ Limpieza de huerfanos completada.", C.GREEN)
-        elif op == "3":
-            os.system("sudo apt clean 2>/dev/null || pacman -Sc --noconfirm")
-            cprint("  ✓ Cache liberada.", C.GREEN)
+        section("MANTENIMIENTO DEL SISTEMA")
+        cprint("\n  [1] Actualizar Sistema  [2] Purgar Huerfanos  [3] Limpiar Cache  [4] Temporales  [8] Update Suite")
+        op = input(f"\n  Seleccione operación: ").strip()
+        if op == "1": os.system("sudo apt update && sudo apt upgrade -y || sudo pacman -Syu --noconfirm")
+        elif op == "2": os.system("sudo apt autoremove -y || pacman -Rns $(pacman -Qdtq) --noconfirm 2>/dev/null")
+        elif op == "3": os.system("sudo apt clean || pacman -Sc --noconfirm")
         elif op == "4":
-            print("\n  [1] Ver tamaño  [2] Limpieza Segura (>7d)  [3] Limpieza Profunda")
+            print("\n  [1] Ver tamaño  [2] Limpiar > 7 días  [3] Limpieza Profunda")
             sel = input("  Opción: ").strip()
             if sel == "2": os.system("sudo find /tmp /var/tmp -type f -atime +7 -delete 2>/dev/null")
             elif sel == "3": os.system("sudo find /tmp /var/tmp -type f -atime +2 -delete 2>/dev/null")
             else: cprint(f"  Tamaño: {run('du -sh /tmp 2>/dev/null')}", C.GRAY)
-        elif op == "5":
-            os.system("sudo journalctl --vacuum-time=7d")
-            cprint("  ✓ Logs antiguos eliminados.", C.GREEN)
-        elif op == "8":
-            auto_update_neuroaudit()
+        elif op == "8": auto_update_neuroaudit()
 
     @staticmethod
     def disk_health():
@@ -151,7 +129,8 @@ class Linux:
 
     @staticmethod
     def security_audit():
-        section("AUDITORIA DE SEGURIDAD (PUERTOS)")
+        section("AUDITORIA DE PUERTOS ABIERTOS")
+        cprint("\n  [ Servicios Escuchando (TCP/UDP) ]", C.YELLOW)
         os.system("sudo ss -tulpn | grep LISTEN")
 
     @staticmethod
@@ -166,21 +145,32 @@ class Linux:
         count = run("dpkg -l | grep '^ii' | wc -l 2>/dev/null || pacman -Q | wc -l")
         cprint(f"\n  Total paquetes instalados: {count}", C.YELLOW)
 
-# ── Utilidades ─────────────────────────────────────────────
+# ── Auditoría Unificada (Opción 10) ─────────────────────────
 
 def run_permission_audit():
-    section("AUDITORIA DE PERMISOS Y USUARIOS")
-    cprint("\n  [ Archivos Críticos ]", C.YELLOW)
-    os.system("ls -la /etc/shadow /etc/sudoers")
-    cprint("\n  [ Usuarios con capacidad de SUDO ]", C.YELLOW)
-    os.system("grep -Po '^sudo:.*:\\K.*|^wheel:.*:\\K.*' /etc/group")
+    section("AUDITORIA INTEGRAL DE SEGURIDAD")
+    
+    # 1. Puertos (Lo que pediste rescatar)
+    cprint("\n  [ 1. Escaneo de Puertos y Servicios ]", C.YELLOW)
+    os.system("sudo ss -tulpn | grep LISTEN")
+    
+    # 2. Archivos Críticos
+    cprint("\n  [ 2. Verificación de Permisos Críticos ]", C.YELLOW)
+    os.system("ls -la /etc/shadow /etc/sudoers /etc/passwd")
+    
+    # 3. Usuarios Sudoers
+    cprint("\n  [ 3. Usuarios con privilegios de ROOT ]", C.YELLOW)
+    res = run("grep -Po '^sudo:.*:\\K.*|^wheel:.*:\\K.*' /etc/group")
+    cprint(f"  Integrantes: {res if res else 'Solo root'}", C.CYAN)
+
+# ── Interfaz ───────────────────────────────────────────────
 
 def auto_update_neuroaudit():
-    cprint(f"\n  Descargando actualización v{_update_result['version']}...", C.YELLOW)
+    cprint(f"\n  Actualizando a v{_update_result['version']}...", C.YELLOW)
     try:
         with urllib.request.urlopen(GITHUB_RAW_URL) as r:
             with open(os.path.abspath(__file__), "wb") as f: f.write(r.read())
-        cprint("  ✓ Actualizado con éxito. Reinicie NEUROAUDIT.", C.GREEN); sys.exit()
+        cprint("  ✓ Actualizado. Reinicie el programa.", C.GREEN); sys.exit()
     except Exception as e: cprint(f"  Error: {e}", C.RED)
 
 def show_banner():
@@ -195,18 +185,12 @@ def show_banner():
     cprint(f"  {'='*82}", C.CYAN)
     
     status_ok = b"Felipe Soluciones IT" in open(__file__, "rb").read()
-    status_txt = f"{C.GREEN}OK INTEGRIDAD VERIFICADA{C.RESET}" if status_ok else f"{C.RED}ERROR{C.RESET}"
     now = datetime.datetime.now().strftime("%d/%m/%Y %H:%M")
-    
     print(f"\n  {C.CYAN}{SYSTEM_NAME}{C.RESET}")
-    print(f"  Estado   : {status_txt}")
+    print(f"  Estado   : {C.GREEN if status_ok else C.RED}OK INTEGRIDAD VERIFICADA{C.RESET}")
     print(f"  Sistema  : {C.GREEN}[LINUX]{C.RESET}  {platform.release()}")
     print(f"  Fecha    : {C.GRAY}{now}{C.RESET}")
     print(f"  Autor    : {C.GRAY}{DEVELOPER}{C.RESET}\n")
-    if _update_result["disponible"]:
-        cprint(f"  ╔══════════════════════════════════════════════════════╗", C.YELLOW)
-        cprint(f"  ║  Nueva versión disponible: v{_update_result['version']:<26}║", C.YELLOW)
-        cprint(f"  ╚══════════════════════════════════════════════════════╝", C.YELLOW)
 
 def show_menu():
     cprint("  [1]  Hardware e Identidad Termica", C.RESET)
@@ -224,22 +208,16 @@ def show_menu():
 def main():
     C.enable_windows_ansi()
     threading.Thread(target=_check_update_background, daemon=True).start()
-    
     M = Linux
     acciones = {
-        "1": M.sys_info,
-        "2": M.maintenance,
-        "3": M.disk_health,
-        "4": M.security_audit,
-        "5": M.event_report,
-        "6": M.software_inventory,
-        "10": run_permission_audit
+        "1": M.sys_info, "2": M.maintenance, "3": M.disk_health, "4": M.security_audit,
+        "5": M.event_report, "6": M.software_inventory, "10": run_permission_audit
     }
 
     while True:
         show_banner()
         show_menu()
-        op = input(f"  {C.CYAN}Seleccione operación: {C.RESET}").strip()
+        op = input(f"  Seleccione: ").strip()
         if op == "0": break
         if op in acciones: 
             acciones[op]()

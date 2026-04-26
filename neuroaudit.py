@@ -4,9 +4,10 @@
 # Developed by: Felipe Soluciones IT
 # ===========================================================
 # ESTADO: FULL OPERATIVO (1-10)
-# - FIX: Diagnóstico de Pasta Térmica avanzado con Uptime.
-# - FIX: Escaneo de Red Local (Opción 9) con detección de IP real.
-# - FIX: Header completo con Kernel, RAM y Serial.
+# - FIX: Menú de Mantenimiento (Opción 2) ahora en LISTA VERTICAL.
+# - FIX: Diagnóstico de Pasta Térmica avanzado con sugerencias.
+# - FIX: Escaneo de Red Local con detección dinámica de subred.
+# - FIX: Header completo con Kernel, RAM real y Serial BIOS.
 # ===========================================================
 
 import os
@@ -70,7 +71,6 @@ class Linux:
     @staticmethod
     def sys_info():
         section("INFRAESTRUCTURA Y SALUD TERMICA")
-        # Fix Serial: Detección robusta
         serial = run("sudo dmidecode -s system-serial-number 2>/dev/null") or run("cat /sys/class/dmi/id/product_serial 2>/dev/null")
         cpu = run("grep -m1 'model name' /proc/cpuinfo | cut -d: -f2").strip()
         ram = run("free -h | grep Mem | awk '{print $3\" / \"$2}'")
@@ -86,7 +86,6 @@ class Linux:
         print(f"  RAM    : {ram} en uso")
         print(f"  UPTIME : {uptime}")
         
-        # Diagnóstico de Pasta Térmica Avanzado
         if temp_cpu:
             cprint("\n  [ Diagnóstico de Pasta Térmica ]", C.YELLOW)
             if temp_cpu < 60:
@@ -102,12 +101,35 @@ class Linux:
     @staticmethod
     def maintenance():
         section("MANTENIMIENTO DEL SISTEMA")
-        print(f"\n  [1] Actualizar Sistema  [2] Purgar Huerfanos\n  [3] Limpiar Cache      [4] Temporales\n  [5] Limpiar Logs       [8] Update Suite")
-        op = input(f"\n  Seleccione: ").strip()
-        if op == "1": os.system("sudo apt update && sudo apt upgrade -y || sudo pacman -Syu --noconfirm")
-        elif op == "2": os.system("sudo apt autoremove -y || sudo pacman -Rns $(pacman -Qdtq) --noconfirm 2>/dev/null")
-        elif op == "5": os.system("sudo journalctl --vacuum-time=7d")
-        elif op == "8": auto_update_neuroaudit()
+        # Cambio a LISTA VERTICAL para mantener la esencia
+        print(f"\n  [1]  Actualizar Sistema (APT/PACMAN)")
+        print(f"  [2]  Purgar Paquetes Huérfanos")
+        print(f"  [3]  Limpiar Caché del Gestor")
+        print(f"  [4]  Limpieza de Archivos Temporales")
+        print(f"  [5]  Limpiar Logs del Sistema (journalctl)")
+        print(f"  [8]  Actualizar Suite NEUROAUDIT")
+        print(f"  [0]  Volver al menú principal")
+
+        op = input(f"\n  Seleccione operación: ").strip()
+        
+        if op == "1":
+            cprint("\n  Iniciando actualización completa...", C.YELLOW)
+            os.system("sudo apt update && sudo apt upgrade -y || sudo pacman -Syu --noconfirm")
+        elif op == "2":
+            os.system("sudo apt autoremove -y || sudo pacman -Rns $(pacman -Qdtq) --noconfirm 2>/dev/null")
+            cprint("  ✓ Limpieza completada.", C.GREEN)
+        elif op == "3":
+            os.system("sudo apt clean || sudo pacman -Sc --noconfirm")
+            cprint("  ✓ Caché liberada.", C.GREEN)
+        elif op == "4":
+            cprint("\n  Limpiando archivos temporales antiguos...", C.YELLOW)
+            os.system("sudo find /tmp /var/tmp -type f -atime +2 -delete 2>/dev/null")
+            cprint("  ✓ Temporales eliminados.", C.GREEN)
+        elif op == "5":
+            os.system("sudo journalctl --vacuum-time=7d")
+            cprint("  ✓ Logs reducidos a los últimos 7 días.", C.GREEN)
+        elif op == "8":
+            auto_update_neuroaudit()
 
     @staticmethod
     def disk_health():

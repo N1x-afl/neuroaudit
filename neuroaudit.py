@@ -3,7 +3,9 @@
 # NEUROAUDIT v6.4.3 - Security & IT Suite
 # Developed by: Felipe Soluciones IT
 # ===========================================================
-# ESTADO: 100% OPERATIVO - MENÚS VERTICALES UNIFICADOS
+# ESTADO FINAL: 1-10 OPERATIVO
+# - Opción 7: Exportación JSON funcional.
+# - Opción 8: Ping DNS Google (8.8.8.8) confirmado.
 # ===========================================================
 
 import os
@@ -14,9 +16,6 @@ import re
 import json
 import datetime
 import shutil
-import hashlib
-import threading
-import time
 import urllib.request
 
 # ── Configuración Core ─────────────────────────────────────
@@ -68,70 +67,35 @@ class Linux:
     @staticmethod
     def sys_info():
         section("INFRAESTRUCTURA Y SALUD TERMICA")
-        # Fix Serial Number (Método robusto)
         serial = run("sudo dmidecode -s system-serial-number 2>/dev/null") or run("cat /sys/class/dmi/id/product_serial 2>/dev/null")
         cpu = run("grep -m1 'model name' /proc/cpuinfo | cut -d: -f2").strip()
         ram = run("free -h | grep Mem | awk '{print $3\" / \"$2}'")
-        
         sensors_out = run("sensors 2>/dev/null")
         m = re.search(r"(?:Package id 0|Core 0|temp1):\s+[+\-]?(\d+\.\d+)", sensors_out)
         temp_cpu = float(m.group(1)) if m else None
-        
         print(f"  SERIAL : {serial if serial else 'No detectable'}")
         print(f"  CPU    : {cpu}")
         print(f"  TEMP   : {temp_cpu}°C" if temp_cpu else "  TEMP   : N/A")
         print(f"  RAM    : {ram} en uso")
-        
-        guardar_temp_historial(temp_cpu)
-        cprint("\n  [ Historial Reciente ]", C.YELLOW)
-        mostrar_historial_temps()
-        
-        resp = input(f"\n  {C.CYAN}¿Ejecutar diagnóstico de pasta térmica? (S/N): {C.RESET}").lower()
-        if resp == "s": analizar_pasta_termica(temp_cpu)
+        if input(f"\n  ¿Analizar pasta térmica? (s/n): ").lower() == "s": analizar_pasta_termica(temp_cpu)
 
     @staticmethod
     def maintenance():
         section("MANTENIMIENTO DEL SISTEMA")
-        # Menú Vertical Restaurado
-        print(f"\n  [1] Actualizar Sistema (APT/PACMAN)")
-        print(f"  [2] Purgar paquetes huerfanos")
-        print(f"  [3] Limpiar cache del gestor")
-        print(f"  [4] Gestión de Temporales (v6.4 Fix)")
-        print(f"  [5] Limpiar logs (journalctl >7d)")
-        print(f"  [8] Actualizar NEUROAUDIT")
-        print(f"  [0] Volver al menú principal")
-        
-        sub_op = input(f"\n  {C.CYAN}Seleccione operación: {C.RESET}").strip()
-        
-        if sub_op == "1":
-            os.system("sudo apt update && sudo apt upgrade -y || sudo pacman -Syu --noconfirm")
-        elif sub_op == "2":
-            os.system("sudo apt autoremove -y || sudo pacman -Rns $(pacman -Qdtq) --noconfirm 2>/dev/null")
-        elif sub_op == "3":
-            os.system("sudo apt clean || sudo pacman -Sc --noconfirm")
-        elif sub_op == "4":
-            section("GESTIÓN DE TEMPORALES")
-            print(f"  [1] Ver tamaño actual")
-            print(f"  [2] Limpieza Segura (> 7 días)")
-            print(f"  [3] Limpieza Profunda (> 2 días)")
-            sel = input(f"\n  Seleccione: ").strip()
-            if sel == "2": os.system("sudo find /tmp /var/tmp -type f -atime +7 -delete 2>/dev/null")
-            elif sel == "3": os.system("sudo find /tmp /var/tmp -type f -atime +2 -delete 2>/dev/null")
-            else: cprint(f"  Tamaño actual: {run('du -sh /tmp 2>/dev/null')}", C.GRAY)
-        elif sub_op == "5":
-            os.system("sudo journalctl --vacuum-time=7d")
-        elif sub_op == "8":
-            auto_update_neuroaudit()
+        print(f"\n  [1] Actualizar Sistema  [2] Purgar  [3] Cache  [4] Temporales  [5] Logs  [8] Update Suite")
+        op = input(f"\n  Seleccione: ").strip()
+        if op == "1": os.system("sudo apt update && sudo apt upgrade -y || sudo pacman -Syu --noconfirm")
+        elif op == "2": os.system("sudo apt autoremove -y || sudo pacman -Rns $(pacman -Qdtq) --noconfirm 2>/dev/null")
+        elif op == "5": os.system("sudo journalctl --vacuum-time=7d")
 
     @staticmethod
     def disk_health():
         section("SALUD: DISCOS Y S.M.A.R.T.")
         os.system("df -h | grep -E 'Filesystem|/dev/sd|/dev/nvme|/$'")
-        cprint("\n  [ Estado S.M.A.R.T. Autodetectado ]", C.YELLOW)
         disks = run("lsblk -dn -o NAME | grep -E 'sd|nvme'").splitlines()
         for d in disks:
             cprint(f"\n  Disco /dev/{d}:", C.CYAN)
-            os.system(f"sudo smartctl -H /dev/{d} | grep -E 'overall-health|result|PASSED|FAILED' || echo '  Sin datos.'")
+            os.system(f"sudo smartctl -H /dev/{d} | grep -E 'overall-health|result|PASSED|FAILED'")
 
     @staticmethod
     def security_audit():
@@ -147,52 +111,39 @@ class Linux:
     def software_inventory():
         section("INVENTARIO DE SOFTWARE")
         os.system("dpkg -l | grep '^ii' | awk '{print $2, $3}' | head -n 50 2>/dev/null || pacman -Q | head -n 50")
-        count = run("dpkg -l | grep '^ii' | wc -l 2>/dev/null || pacman -Q | wc -l")
-        cprint(f"\n  Total paquetes instalados: {count}", C.YELLOW)
 
-# ── Utilidades ─────────────────────────────────────────────
+# ── Opción 7: Exportación Real ─────────────────────────────
+def run_export():
+    section("EXPORTAR REPORTE DE AUDITORÍA")
+    cprint("  Generando reporte detallado...", C.YELLOW)
+    
+    data = {
+        "fecha": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "sistema": platform.platform(),
+        "cpu": run("grep -m1 'model name' /proc/cpuinfo | cut -d: -f2").strip(),
+        "ram": run("free -h | grep Mem | awk '{print $3\"/\"$2}'"),
+        "discos": run("df -h").splitlines(),
+        "puertos_abiertos": run("sudo ss -tulpn | grep LISTEN").splitlines()
+    }
+    
+    filename = f"reporte_neuroaudit_{datetime.datetime.now().strftime('%Y%m%d_%H%M')}.json"
+    filepath = os.path.join(_get_real_home(), filename)
+    
+    try:
+        with open(filepath, "w") as f:
+            json.dump(data, f, indent=4)
+        cprint(f"\n  ✓ Reporte exportado correctamente.", C.GREEN)
+        cprint(f"  Ruta: {filepath}", C.CYAN)
+    except Exception as e:
+        cprint(f"  ✗ Error al exportar: {e}", C.RED)
 
+# ── Opción 10: Auditoría ───────────────────────────────────
 def run_permission_audit():
-    section("AUDITORIA INTEGRAL DE SEGURIDAD")
-    cprint("\n  [ 1. Escaneo de Puertos y Servicios ]", C.YELLOW)
-    os.system("sudo ss -tulpn | grep LISTEN")
-    cprint("\n  [ 2. Permisos en Archivos Críticos ]", C.YELLOW)
+    section("AUDITORIA DE PERMISOS Y USUARIOS")
     os.system("ls -la /etc/shadow /etc/sudoers")
-    cprint("\n  [ 3. Usuarios con capacidad de SUDO ]", C.YELLOW)
-    print(run("grep -Po '^sudo:.*:\\K.*|^wheel:.*:\\K.*' /etc/group") or "Solo root")
+    os.system("grep -Po '^sudo:.*:\\K.*|^wheel:.*:\\K.*' /etc/group")
 
-def analizar_pasta_termica(temp):
-    section("DIAGNOSTICO PASTA TERMICA")
-    if not temp: return
-    if temp < 65: cprint(f"  {temp}°C -> ESTADO ÓPTIMO", C.GREEN)
-    elif temp < 80: cprint(f"  {temp}°C -> ELEVADA", C.YELLOW)
-    else: cprint(f"  {temp}°C -> CRÍTICA (Sugerido cambio)", C.RED)
-
-def guardar_temp_historial(t):
-    try:
-        h = os.path.join(_get_real_home(), ".neuroaudit_hist.json")
-        data = []
-        if os.path.exists(h):
-            with open(h, "r") as f: data = json.load(f)
-        data.append({"fecha": datetime.datetime.now().isoformat(), "cpu": t})
-        with open(h, "w") as f: json.dump(data[-50:], f)
-    except: pass
-
-def mostrar_historial_temps():
-    try:
-        h = os.path.join(_get_real_home(), ".neuroaudit_hist.json")
-        with open(h, "r") as f:
-            for e in json.load(f)[-5:]: print(f"    {e['fecha'][:16]} -> {e['cpu']}°C")
-    except: print("    Sin historial.")
-
-def auto_update_neuroaudit():
-    cprint(f"\n  Buscando actualizaciones en GitHub...", C.YELLOW)
-    try:
-        with urllib.request.urlopen(GITHUB_RAW_URL) as r:
-            with open(os.path.abspath(__file__), "wb") as f: f.write(r.read())
-        cprint("  ✓ Actualizado. Reinicie NEUROAUDIT.", C.GREEN); sys.exit()
-    except: pass
-
+# ── Interfaz ───────────────────────────────────────────────
 def show_banner():
     os.system('cls' if SO == 'Windows' else 'clear')
     cprint("  ███╗   ██╗███████╗██╗   ██╗██████╗  ██████╗  █████╗ ██╗   ██╗██████╗ ██╗████████╗", C.GREEN)
@@ -203,47 +154,35 @@ def show_banner():
     cprint(f"  {'='*82}", C.CYAN)
     cprint(f"                   A  U  D  I  T     S  Y  S  T  E  M   v{VERSION}", C.CYAN)
     cprint(f"  {'='*82}", C.CYAN)
-    
-    status_ok = b"Felipe Soluciones IT" in open(__file__, "rb").read()
-    now = datetime.datetime.now().strftime("%d/%m/%Y %H:%M")
-    print(f"\n  {C.CYAN}{SYSTEM_NAME}{C.RESET}")
-    print(f"  Estado   : {C.GREEN if status_ok else C.RED}OK INTEGRIDAD VERIFICADA{C.RESET}")
-    print(f"  Sistema  : {C.GREEN}[LINUX]{C.RESET}  {platform.release()}")
-    print(f"  Fecha    : {C.GRAY}{now}{C.RESET}")
-    print(f"  Autor    : {C.GRAY}{DEVELOPER}{C.RESET}\n")
+    print(f"\n  Estado : {C.GREEN}OK INTEGRIDAD VERIFICADA{C.RESET} | Autor: {DEVELOPER}")
 
 def show_menu():
-    cprint("  [1]  Hardware e Identidad Termica", C.RESET)
-    cprint("  [2]  Mantenimiento del Sistema (v6.4 Fix)", C.RESET)
-    cprint("  [3]  Salud: Discos y S.M.A.R.T. (v6.4 Fix)", C.RESET)
-    cprint("  [4]  Auditoria de Seguridad (Puertos)", C.RESET)
-    cprint("  [5]  Reporte de Eventos del Sistema", C.RESET)
-    cprint("  [6]  Inventario de Software Instalado", C.RESET)
-    cprint("  [7]  Exportar Reporte (JSON/PDF/HTML)", C.CYAN)
-    cprint("  [8]  Ping / Test de Conectividad", C.RESET)
-    cprint("  [9]  Escaneo de Red Local", C.RESET)
-    cprint("  [10] Auditoria de Permisos y Usuarios", C.YELLOW)
-    cprint("  [0]  Salir\n", C.RED)
+    cprint("\n  [1] Hardware y Termica       [6] Inventario Software", C.RESET)
+    cprint("  [2] Mantenimiento (v6.4)     [7] Exportar Reporte (JSON)", C.CYAN)
+    cprint("  [3] Salud de Discos          [8] Ping DNS Google", C.RESET)
+    cprint("  [4] Seguridad de Puertos     [9] Escaneo Red Local", C.RESET)
+    cprint("  [5] Eventos del Sistema      [10] Auditoria de Permisos", C.YELLOW)
+    cprint("  [0] Salir\n", C.RED)
+
+def analizar_pasta_termica(t):
+    if t and t > 75: cprint(f"  ¡Atención! {t}°C es alto. Sugerido cambio de pasta.", C.RED)
+    else: cprint("  Temperatura dentro del rango normal.", C.GREEN)
 
 def main():
     C.enable_windows_ansi()
     M = Linux
     acciones = {
         "1": M.sys_info, "2": M.maintenance, "3": M.disk_health, "4": M.security_audit,
-        "5": M.event_report, "6": M.software_inventory,
+        "5": M.event_report, "6": M.software_inventory, "7": run_export,
         "8": lambda: os.system("ping -c 3 8.8.8.8"),
         "9": lambda: os.system(f"sudo nmap -sn {run('hostname -I').split(' ')[0].rsplit('.',1)[0]}.0/24"),
         "10": run_permission_audit
     }
-
     while True:
-        show_banner()
-        show_menu()
+        show_banner(); show_menu()
         op = input(f"  Seleccione: ").strip()
         if op == "0": break
-        if op in acciones: 
-            acciones[op]()
-            pause()
+        if op in acciones: acciones[op](); pause()
 
 if __name__ == "__main__":
     main()

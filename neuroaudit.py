@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
 # ===========================================================
-# NEUROAUDIT v6.4.4 - Security & IT Suite
+# NEUROAUDIT v6.4.5 - Security & IT Suite
 # Developed by: Felipe Soluciones IT
 # ===========================================================
-# ESTADO: FULL OPERATIVO (1-10)
-# - FIX: Menú de Mantenimiento (Opción 2) ahora en LISTA VERTICAL.
-# - FIX: Diagnóstico de Pasta Térmica avanzado con sugerencias.
-# - FIX: Escaneo de Red Local con detección dinámica de subred.
-# - FIX: Header completo con Kernel, RAM real y Serial BIOS.
+# ESTADO: RESILIENTE (FIX RED)
+# - ADD: Validación de conectividad a repositorios (Anti-Colapso).
+# - ADD: Bypass automático HTTPS -> HTTP para repositorios Zorin.
+# - ADD: Liberación automática de locks de APT/PackageKit.
 # ===========================================================
 
 import os
@@ -23,7 +22,7 @@ import time
 import urllib.request
 
 # ── Configuración Core ─────────────────────────────────────
-VERSION      = "6.4.4"
+VERSION      = "6.4.5"
 SYSTEM_NAME  = "NEUROAUDIT - Security & IT Suite"
 DEVELOPER    = "Felipe Soluciones IT"
 GITHUB_USER  = "N1x-afl"
@@ -69,6 +68,18 @@ def _get_real_home():
 # ── Módulos Linux ──────────────────────────────────────────
 class Linux:
     @staticmethod
+    def check_repo_health():
+        """Verifica si Launchpad responde antes de colgar el script."""
+        cprint("\n  [ Verificando Salud de Repositorios ]", C.YELLOW)
+        status = os.system("nc -zv -w 3 ppa.launchpad.net 443 > /dev/null 2>&1")
+        if status == 0:
+            cprint("  ✓ Repositorios Zorin (HTTPS): ONLINE", C.GREEN)
+            return True
+        else:
+            cprint("  ✗ Repositorios Zorin (HTTPS): OFFLINE/BLOQUEADO", C.RED)
+            return False
+
+    @staticmethod
     def sys_info():
         section("INFRAESTRUCTURA Y SALUD TERMICA")
         serial = run("sudo dmidecode -s system-serial-number 2>/dev/null") or run("cat /sys/class/dmi/id/product_serial 2>/dev/null")
@@ -101,33 +112,44 @@ class Linux:
     @staticmethod
     def maintenance():
         section("MANTENIMIENTO DEL SISTEMA")
-        # Cambio a LISTA VERTICAL para mantener la esencia
-        print(f"\n  [1]  Actualizar Sistema (APT/PACMAN)")
-        print(f"  [2]  Purgar Paquetes Huérfanos")
-        print(f"  [3]  Limpiar Caché del Gestor")
-        print(f"  [4]  Limpieza de Archivos Temporales")
-        print(f"  [5]  Limpiar Logs del Sistema (journalctl)")
+        
+        # FIX: Liberar bloqueos de procesos automáticos
+        cprint("  Liberando bloqueos de APT/PackageKit...", C.GRAY)
+        os.system("sudo systemctl stop packagekit >/dev/null 2>&1")
+        os.system("sudo fuser -vki /var/lib/apt/lists/lock >/dev/null 2>&1")
+
+        print(f"\n  [1]  Actualizar Sistema (Inteligente)")
+        print(f"  [2]  Fix: Bypass HTTPS -> HTTP (Anti-Bloqueo)")
+        print(f"  [3]  Purgar Paquetes Huérfanos")
+        print(f"  [4]  Limpiar Caché y Temporales")
+        print(f"  [5]  Limpiar Logs del Sistema")
         print(f"  [8]  Actualizar Suite NEUROAUDIT")
         print(f"  [0]  Volver al menú principal")
 
         op = input(f"\n  Seleccione operación: ").strip()
         
         if op == "1":
+            if not Linux.check_repo_health():
+                cprint("\n  [!] Advertencia: Los repositorios HTTPS fallan.", C.RED)
+                cprint("  Use la Opción [2] para aplicar el bypass antes de actualizar.", C.YELLOW)
+            
             cprint("\n  Iniciando actualización completa...", C.YELLOW)
-            os.system("sudo apt update && sudo apt upgrade -y || sudo pacman -Syu --noconfirm")
+            os.system("sudo apt update && sudo apt upgrade -y")
+            
         elif op == "2":
-            os.system("sudo apt autoremove -y || sudo pacman -Rns $(pacman -Qdtq) --noconfirm 2>/dev/null")
-            cprint("  ✓ Limpieza completada.", C.GREEN)
+            cprint("\n  Aplicando Fix de conectividad (Bypass SSL)...", C.CYAN)
+            os.system("sudo sed -i 's/https:/http:/g' /etc/apt/sources.list.d/zorinos-*.sources")
+            cprint("  ✓ Configuración cambiada a HTTP. Intente actualizar ahora.", C.GREEN)
+
         elif op == "3":
-            os.system("sudo apt clean || sudo pacman -Sc --noconfirm")
-            cprint("  ✓ Caché liberada.", C.GREEN)
+            os.system("sudo apt autoremove -y")
+            cprint("  ✓ Limpieza completada.", C.GREEN)
         elif op == "4":
-            cprint("\n  Limpiando archivos temporales antiguos...", C.YELLOW)
-            os.system("sudo find /tmp /var/tmp -type f -atime +2 -delete 2>/dev/null")
-            cprint("  ✓ Temporales eliminados.", C.GREEN)
+            os.system("sudo apt clean && sudo find /tmp /var/tmp -type f -atime +2 -delete 2>/dev/null")
+            cprint("  ✓ Temporales y Caché liberados.", C.GREEN)
         elif op == "5":
             os.system("sudo journalctl --vacuum-time=7d")
-            cprint("  ✓ Logs reducidos a los últimos 7 días.", C.GREEN)
+            cprint("  ✓ Logs optimizados.", C.GREEN)
         elif op == "8":
             auto_update_neuroaudit()
 
@@ -153,8 +175,8 @@ class Linux:
     @staticmethod
     def software_inventory():
         section("INVENTARIO DE SOFTWARE")
-        os.system("dpkg -l | grep '^ii' | awk '{print $2, $3}' | head -n 50 2>/dev/null || pacman -Q | head -n 50")
-        count = run("dpkg -l | grep '^ii' | wc -l 2>/dev/null || pacman -Q | wc -l")
+        os.system("dpkg -l | grep '^ii' | awk '{print $2, $3}' | head -n 50 2>/dev/null")
+        count = run("dpkg -l | grep '^ii' | wc -l 2>/dev/null")
         cprint(f"\n  Total paquetes instalados: {count}", C.YELLOW)
 
     @staticmethod
@@ -185,8 +207,6 @@ def run_permission_audit():
     section("AUDITORIA DE PERMISOS Y USUARIOS")
     cprint("\n  [ Archivos Críticos ]", C.YELLOW)
     os.system("ls -la /etc/shadow /etc/sudoers")
-    cprint("\n  [ Puertos (Seguridad) ]", C.YELLOW)
-    os.system("sudo ss -tulpn | grep LISTEN")
     cprint("\n  [ Usuarios con SUDO ]", C.YELLOW)
     print(run("grep -Po '^sudo:.*:\\K.*|^wheel:.*:\\K.*' /etc/group") or "Solo root")
 
@@ -194,7 +214,7 @@ def auto_update_neuroaudit():
     try:
         with urllib.request.urlopen(GITHUB_RAW_URL) as r:
             with open(__file__, "wb") as f: f.write(r.read())
-        cprint("✓ v6.4.4 Instalada. Reinicie.", C.GREEN); sys.exit()
+        cprint("✓ v6.4.5 Instalada. Reinicie.", C.GREEN); sys.exit()
     except: cprint("Error de conexión.", C.RED)
 
 # ── Interfaz ───────────────────────────────────────────────
@@ -207,7 +227,7 @@ def show_banner():
     cprint("  ██║╚██╗██║██╔══╝  ██║   ██║██╔══██╗██║   ██║██╔══██║██║   ██║██║  ██║██║   ██║   ", C.GREEN)
     cprint("  ██║ ╚████║███████╗╚██████╔╝██║  ██║╚██████╔╝██║  ██║╚██████╔╝██████╔╝██║   ██║   ", C.GREEN)
     cprint(f"  {'='*82}", C.CYAN)
-    cprint(f"                   A  U  D  I  T     S  Y  S  T  E  M   v{VERSION}", C.CYAN)
+    cprint(f"                     A  U  D  I  T     S  Y  S  T  E  M   v{VERSION}", C.CYAN)
     cprint(f"  {'='*82}", C.CYAN)
     
     status_ok = b"Felipe Soluciones IT" in open(__file__, "rb").read()

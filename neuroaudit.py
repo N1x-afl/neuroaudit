@@ -5,7 +5,7 @@
 # ===========================================================
 # - UPGRADE: Auditoría de vulnerabilidades críticas (CVE-2026-31431).
 # - FIX: Gestión de bloqueos de APT mejorada (fuser + systemctl).
-# - OPTIMIZED: Validación de ruteo y conectividad en Capa 7.
+# - RESTORED: Opción 10 - Auditoría de Permisos y Usuarios.
 # ===========================================================
 
 import os
@@ -64,22 +64,6 @@ def _get_real_home():
     if sudo_user: return run(f"getent passwd {sudo_user} | cut -d: -f6")
     return os.path.expanduser("~")
 
-def run_export():
-    section("EXPORTAR REPORTE")
-    data = {
-        "fecha": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
-        "kernel": platform.release(),
-        "cpu": run("grep -m1 'model name' /proc/cpuinfo | cut -d: -f2").strip(),
-        "ram": run("free -h | grep Mem | awk '{print $3\" / \"$2}'"),
-        "version_suite": VERSION
-    }
-    path = os.path.join(_get_real_home(), f"reporte_audit_{datetime.datetime.now().strftime('%Y%m%d')}.json")
-    try:
-        with open(path, "w") as f: json.dump(data, f, indent=4)
-        cprint(f"  ✓ Reporte JSON guardado en: {path}", C.GREEN)
-    except Exception as e:
-        cprint(f"  ✗ Error al exportar: {e}", C.RED)
-
 # ── Módulos Linux ──────────────────────────────────────────
 class Linux:
     @staticmethod
@@ -100,7 +84,6 @@ class Linux:
         cpu = run("grep -m1 'model name' /proc/cpuinfo | cut -d: -f2").strip()
         ram = run("free -h | grep Mem | awk '{print $3\" / \"$2}'")
         uptime = run("uptime -p")
-        
         sensors_out = run("sensors 2>/dev/null")
         m = re.search(r"(?:Package id 0|Core 0|temp1):\s+[+\-]?(\d+\.\d+)", sensors_out)
         temp_cpu = float(m.group(1)) if m else None
@@ -113,49 +96,25 @@ class Linux:
         
         if temp_cpu:
             cprint("\n  [ Diagnóstico de Pasta Térmica ]", C.YELLOW)
-            if temp_cpu < 60:
-                cprint(f"  ✓ Estado Óptimo: {temp_cpu}°C", C.GREEN)
-            elif temp_cpu < 80:
-                cprint(f"  ⚠ Temperatura Elevada: {temp_cpu}°C", C.YELLOW)
-            else:
-                cprint(f"  ✗ CRÍTICO: {temp_cpu}°C", C.RED, bold=True)
-                cprint("    Acción: Cambio de pasta térmica URGENTE.", C.RED)
-
-    @staticmethod
-    def vulnerability_audit():
-        section("AUDITORÍA DE VULNERABILIDAD CRÍTICA")
-        version = run("dpkg -l | grep libcurl4t64 | awk '{print $3}'")
-        cprint(f"  Componente: libcurl4t64", C.CYAN)
-        cprint(f"  Versión:    {version if version else 'No detectada'}", C.GRAY)
-        
-        if "10.8" in version:
-            cprint("\n  [!] ESTADO: VULNERABLE", C.RED, bold=True)
-            cprint("  Detectado: CVE-2026-31431 (Rapid Reset HTTP/2)", C.YELLOW)
-        elif version:
-            cprint("\n  [✓] ESTADO: PROTEGIDO", C.GREEN, bold=True)
-        else:
-            cprint("\n  [?] No se pudo determinar la versión de libcurl.", C.YELLOW)
+            if temp_cpu < 60: cprint(f"  ✓ Estado Óptimo: {temp_cpu}°C", C.GREEN)
+            elif temp_cpu < 80: cprint(f"  ⚠ Temperatura Elevada: {temp_cpu}°C", C.YELLOW)
+            else: cprint(f"  ✗ CRÍTICO: {temp_cpu}°C", C.RED, bold=True)
 
     @staticmethod
     def maintenance():
         section("MANTENIMIENTO DEL SISTEMA")
-        cprint("  Liberando bloqueos de APT/PackageKit...", C.GRAY)
         os.system("sudo systemctl stop packagekit >/dev/null 2>&1")
         os.system("sudo fuser -vki /var/lib/apt/lists/lock >/dev/null 2>&1")
-
         print(f"\n  [1]  Actualizar Sistema (Validación de Red)")
         print(f"  [2]  Aplicar Bypass HTTP (Anti-Bloqueo ISP)")
         print(f"  [3]  Restaurar HTTPS (Seguridad Máxima)")
         print(f"  [4]  Limpieza de Paquetes y Caché")
         print(f"  [5]  Reducción de Logs (7 días)")
         print(f"  [0]  Volver al menú principal")
-
         op = input(f"\n  Seleccione operación: ").strip()
         if op == "1":
-            if not Linux.check_repo_health():
-                cprint("\n  [!] Error de ruteo. Use Opción [2] antes.", C.RED)
-            else:
-                os.system("sudo apt update && sudo apt upgrade -y")
+            if not Linux.check_repo_health(): cprint("\n  [!] Error de ruteo. Use Opción [2] antes.", C.RED)
+            else: os.system("sudo apt update && sudo apt upgrade -y")
         elif op == "2":
             os.system("sudo sed -i 's/https:/http:/g' /etc/apt/sources.list.d/zorinos-*.sources")
             cprint("  ✓ Bypass aplicado.", C.GREEN)
@@ -164,10 +123,18 @@ class Linux:
             cprint("  ✓ Seguridad restaurada.", C.GREEN)
         elif op == "4":
             os.system("sudo apt autoremove -y && sudo apt clean")
-            cprint("  ✓ Limpieza completada.", C.GREEN)
         elif op == "5":
             os.system("sudo journalctl --vacuum-time=7d")
-            cprint("  ✓ Logs rotados.", C.GREEN)
+
+    @staticmethod
+    def vulnerability_audit():
+        section("AUDITORÍA DE VULNERABILIDAD CRÍTICA")
+        version = run("dpkg -l | grep libcurl4t64 | awk '{print $3}'")
+        cprint(f"  Librería: libcurl4t64 | Versión: {version if version else 'N/A'}", C.CYAN)
+        if "10.8" in version:
+            cprint("\n  [!] ESTADO: VULNERABLE (CVE-2026-31431)", C.RED, bold=True)
+        elif version:
+            cprint("\n  [✓] ESTADO: PROTEGIDO", C.GREEN, bold=True)
 
     @staticmethod
     def disk_health():
@@ -204,6 +171,30 @@ class Linux:
         cprint(f"  Escaneando: {subred}...\n", C.YELLOW)
         os.system(f"sudo nmap -sn {subred}")
 
+    @staticmethod
+    def permission_audit():
+        section("AUDITORIA DE PERMISOS Y USUARIOS")
+        cprint("\n  [ Archivos Críticos ]", C.YELLOW)
+        os.system("ls -la /etc/shadow /etc/sudoers")
+        cprint("\n  [ Usuarios con SUDO ]", C.YELLOW)
+        print(run("grep -Po '^sudo:.*:\\K.*|^wheel:.*:\\K.*' /etc/group") or "Solo root")
+
+# ── Funciones Globales ─────────────────────────────────────
+
+def run_export():
+    section("EXPORTAR REPORTE")
+    data = {"fecha": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"), "kernel": platform.release(), "cpu": run("grep -m1 'model name' /proc/cpuinfo | cut -d: -f2").strip(), "ram": run("free -h | grep Mem | awk '{print $3\" / \"$2}'")}
+    path = os.path.join(_get_real_home(), f"reporte_audit_{datetime.datetime.now().strftime('%Y%m%d')}.json")
+    with open(path, "w") as f: json.dump(data, f, indent=4)
+    cprint(f"  ✓ Reporte JSON guardado en: {path}", C.GREEN)
+
+def auto_update_neuroaudit():
+    try:
+        with urllib.request.urlopen(GITHUB_RAW_URL) as r:
+            with open(__file__, "wb") as f: f.write(r.read())
+        cprint("✓ v6.5.0 Instalada. Reinicie.", C.GREEN); sys.exit()
+    except: cprint("Error de conexión.", C.RED)
+
 # ── Interfaz ───────────────────────────────────────────────
 
 def show_banner():
@@ -230,29 +221,22 @@ def show_menu():
     print(f"  [7]  Exportar Reporte JSON")
     print(f"  [8]  Inventario de Software")
     print(f"  [9]  Actualizar Suite NeuroAudit")
+    cprint("  [10] Auditoría de Permisos / Usuarios", C.YELLOW)
     cprint("  [0]  Salir\n", C.RED)
 
 def main():
     C.enable_windows_ansi()
     M = Linux
     acciones = {
-        "1": M.sys_info, 
-        "2": M.maintenance, 
-        "3": M.vulnerability_audit,
-        "4": M.disk_health, 
-        "5": lambda: (M.network_scan(), M.security_audit()),
-        "6": M.event_report,
-        "7": run_export,
-        "8": M.software_inventory,
-        "9": lambda: os.system("python3 -c 'from __main__ import auto_update_neuroaudit; auto_update_neuroaudit()'")
+        "1": M.sys_info, "2": M.maintenance, "3": M.vulnerability_audit, "4": M.disk_health, 
+        "5": lambda: (M.network_scan(), M.security_audit()), "6": M.event_report, "7": run_export,
+        "8": M.software_inventory, "9": auto_update_neuroaudit, "10": M.permission_audit
     }
     while True:
         show_banner(); show_menu()
         op = input(f"  Seleccione: ").strip()
         if op == "0": break
-        if op in acciones: 
-            acciones[op]()
-            pause()
+        if op in acciones: acciones[op](); pause()
 
 if __name__ == "__main__":
     main()

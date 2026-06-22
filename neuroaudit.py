@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 # ===========================================================
-# NEUROAUDIT v6.5.0 - Security & IT Suite
+# NEUROAUDIT v6.6.0 - Security & IT Suite
 # Developed by: Felipe Soluciones IT
 # ===========================================================
-# - UPGRADE: Auditoría de vulnerabilidades críticas (CVE-2026-31431).
-# - FIX: Gestión de bloqueos de APT mejorada (fuser + systemctl).
-# - RESTORED: Opción 10 - Auditoría de Permisos y Usuarios.
+# - NEW: Módulo 11 — Escaneo CVE real contra todos los paquetes
+#         instalados via OSV.dev batch API (sin API key).
+#         Severidades CRITICAL/HIGH/MEDIUM con detalle y export JSON.
+# - FIX: import urllib.error agregado para manejo robusto de red.
+# - PREV: Auditoría de vulnerabilidades críticas (CVE-2026-31431).
 # ===========================================================
 
 import os
@@ -19,9 +21,10 @@ import shutil
 import threading
 import time
 import urllib.request
+import urllib.error
 
 # ── Configuración Core ─────────────────────────────────────
-VERSION      = "6.5.0"
+VERSION      = "6.6.0"
 SYSTEM_NAME  = "NEUROAUDIT - Security & IT Suite"
 DEVELOPER    = "Felipe Soluciones IT"
 GITHUB_USER  = "N1x-afl"
@@ -179,6 +182,183 @@ class Linux:
         cprint("\n  [ Usuarios con SUDO ]", C.YELLOW)
         print(run("grep -Po '^sudo:.*:\\K.*|^wheel:.*:\\K.*' /etc/group") or "Solo root")
 
+    @staticmethod
+    def cve_scan():
+        section("ESCANEO DE VULNERABILIDADES CVE — PAQUETES INSTALADOS")
+        OSV_BATCH_URL = "https://api.osv.dev/v1/querybatch"
+        SEV_COLOR = {
+            "CRITICAL": C.RED, "HIGH": C.RED, "MEDIUM": C.YELLOW,
+            "LOW": C.GRAY, "UNKNOWN": C.GRAY
+        }
+        SEV_ORDER = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3, "UNKNOWN": 4}
+
+        # ── 1. Obtener paquetes instalados ──────────────────────
+        cprint("\n  [*] Obteniendo inventario de paquetes...", C.CYAN)
+        raw = run("dpkg-query -W -f='${Package} ${Version}\\n' 2>/dev/null")
+        if not raw:
+            cprint("  ✗ No se pudo obtener el inventario de paquetes.", C.RED)
+            return
+        packages = []
+        for line in raw.splitlines():
+            parts = line.strip().split(" ", 1)
+            if len(parts) == 2 and parts[1]:
+                packages.append({"name": parts[0], "version": parts[1]})
+
+        total = len(packages)
+        cprint(f"  ✓ {total} paquetes detectados. Consultando OSV.dev...\n", C.GREEN)
+
+        # ── 2. Consulta batch a OSV (chunks de 100) ─────────────
+        CHUNK = 100
+        findings = []
+        errors = 0
+
+        for i in range(0, total, CHUNK):
+            chunk = packages[i:i + CHUNK]
+            progress = min(i + CHUNK, total)
+            print(f"\r  Analizando: {progress}/{total} paquetes...", end="", flush=True)
+
+            queries = [
+                {
+                    "package": {"name": pkg["name"], "ecosystem": "Debian"},
+                    "version": pkg["version"]
+                }
+                for pkg in chunk
+            ]
+            payload = json.dumps({"queries": queries}).encode("utf-8")
+            req = urllib.request.Request(
+                OSV_BATCH_URL,
+                data=payload,
+                headers={
+                    "Content-Type": "application/json",
+                    "User-Agent": f"NeuroAudit/{VERSION}"
+                }
+            )
+            try:
+                with urllib.request.urlopen(req, timeout=15) as resp:
+                    data = json.loads(resp.read())
+                    results = data.get("results", [])
+                    for j, res in enumerate(results):
+                        vulns = res.get("vulns", [])
+                        if vulns:
+                            pkg = chunk[j]
+                            for v in vulns:
+                                # Extraer severidad (CVSS v3 > v2 > database_specific)
+                                sev = "UNKNOWN"
+                                score = None
+                                for sev_entry in v.get("severity", []):
+                                    if sev_entry.get("type") == "CVSS_V3":
+                                        score_val = sev_entry.get("score", "")
+                                        # Score numérico desde CVSS vector o campo separado
+                                        if "CVSS" in score_val:
+                                            # Calcular severidad desde vector
+                                            if "AV:N" in score_val and "AC:L" in score_val:
+                                                sev = "HIGH"
+                                            elif score_val.count("/") > 3:
+                                                sev = "MEDIUM"
+                                        break
+                                # Fallback a database_specific
+                                db_sev = v.get("database_specific", {}).get("severity", "")
+                                if db_sev and sev == "UNKNOWN":
+                                    sev = db_sev.upper()
+                                # Fallback: buscar en aliases si tiene GHSA con score
+                                if sev == "UNKNOWN":
+                                    for alias in v.get("aliases", []):
+                                        if alias.startswith("CVE-"):
+                                            sev = "UNKNOWN"
+                                            break
+
+                                findings.append({
+                                    "package": pkg["name"],
+                                    "version": pkg["version"],
+                                    "cve_id": v.get("id", "N/A"),
+                                    "aliases": [a for a in v.get("aliases", []) if a.startswith("CVE-")][:2],
+                                    "severity": sev if sev in SEV_ORDER else "UNKNOWN",
+                                    "summary": v.get("summary", "Sin descripción")[:80]
+                                })
+            except urllib.error.URLError as e:
+                errors += 1
+                continue
+            except Exception:
+                errors += 1
+                continue
+
+        print()  # newline tras el progress
+
+        # ── 3. Resultados ────────────────────────────────────────
+        if not findings:
+            if errors > 0:
+                cprint(f"\n  ✗ No se pudo conectar a OSV.dev ({errors} errores). Verificá tu conexión.", C.RED)
+            else:
+                cprint("\n  ✓ Sin vulnerabilidades conocidas detectadas en los paquetes instalados.", C.GREEN)
+            return
+
+        # Ordenar por severidad
+        findings.sort(key=lambda x: SEV_ORDER.get(x["severity"], 4))
+
+        # Conteo por severidad
+        counts = {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0, "UNKNOWN": 0}
+        for f in findings:
+            counts[f["severity"]] = counts.get(f["severity"], 0) + 1
+
+        cprint(f"\n  {'─'*58}", C.CYAN)
+        cprint(f"  RESUMEN: {len(findings)} vulnerabilidades en {len(set(f['package'] for f in findings))} paquetes", C.BOLD)
+        cprint(f"  {'─'*58}", C.CYAN)
+        for sev, cnt in counts.items():
+            if cnt > 0:
+                label = f"  {sev:<10}: {cnt}"
+                cprint(label, SEV_COLOR.get(sev, C.RESET))
+
+        # Detalle — solo CRITICAL y HIGH por defecto
+        cprint(f"\n  [ Paquetes Vulnerables — CRITICAL / HIGH ]", C.YELLOW)
+        shown = 0
+        for f in findings:
+            if f["severity"] not in ("CRITICAL", "HIGH"):
+                continue
+            cve_display = ", ".join(f["aliases"]) if f["aliases"] else f["cve_id"]
+            color = SEV_COLOR.get(f["severity"], C.RESET)
+            cprint(f"  ✗ [{f['severity']:<8}] {f['package']} {f['version']}", color, bold=True)
+            print(f"         CVE  : {cve_display}")
+            print(f"         ID   : {f['cve_id']}")
+            print(f"         Info : {f['summary']}")
+            print()
+            shown += 1
+
+        if shown == 0:
+            cprint("  ✓ Sin paquetes CRITICAL o HIGH detectados.", C.GREEN)
+
+        # Opción de ver MEDIUM también
+        if counts.get("MEDIUM", 0) > 0:
+            cprint(f"\n  [*] También hay {counts['MEDIUM']} vulnerabilidades MEDIUM.", C.YELLOW)
+            ver = input("  ¿Mostrar detalle de MEDIUM? [s/N]: ").strip().lower()
+            if ver == "s":
+                for f in findings:
+                    if f["severity"] != "MEDIUM":
+                        continue
+                    cve_display = ", ".join(f["aliases"]) if f["aliases"] else f["cve_id"]
+                    cprint(f"  ⚠ [MEDIUM   ] {f['package']} {f['version']}", C.YELLOW)
+                    print(f"         CVE  : {cve_display}")
+                    print(f"         Info : {f['summary']}")
+                    print()
+
+        # Exportar hallazgos a JSON
+        export_path = os.path.join(
+            _get_real_home(),
+            f"neuroaudit_cve_{datetime.datetime.now().strftime('%Y%m%d_%H%M')}.json"
+        )
+        try:
+            with open(export_path, "w") as fp:
+                json.dump({
+                    "fecha": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
+                    "host": platform.node(),
+                    "total_paquetes": total,
+                    "total_vulns": len(findings),
+                    "resumen": counts,
+                    "vulnerabilidades": findings
+                }, fp, indent=4, ensure_ascii=False)
+            cprint(f"\n  ✓ Reporte exportado: {export_path}", C.GREEN)
+        except Exception as e:
+            cprint(f"\n  ⚠ No se pudo exportar el reporte: {e}", C.YELLOW)
+
 # ── Funciones Globales ─────────────────────────────────────
 
 def run_export():
@@ -222,6 +402,7 @@ def show_menu():
     print(f"  [8]  Inventario de Software")
     print(f"  [9]  Actualizar Suite NeuroAudit")
     cprint("  [10] Auditoría de Permisos / Usuarios", C.YELLOW)
+    cprint("  [11] Escaneo CVE — Paquetes Instalados", C.RED)
     cprint("  [0]  Salir\n", C.RED)
 
 def main():
@@ -230,7 +411,8 @@ def main():
     acciones = {
         "1": M.sys_info, "2": M.maintenance, "3": M.vulnerability_audit, "4": M.disk_health, 
         "5": lambda: (M.network_scan(), M.security_audit()), "6": M.event_report, "7": run_export,
-        "8": M.software_inventory, "9": auto_update_neuroaudit, "10": M.permission_audit
+        "8": M.software_inventory, "9": auto_update_neuroaudit, "10": M.permission_audit,
+        "11": M.cve_scan
     }
     while True:
         show_banner(); show_menu()

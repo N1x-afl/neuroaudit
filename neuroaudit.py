@@ -161,7 +161,7 @@ class Linux:
     @staticmethod
     def software_inventory():
         section("INVENTARIO DE SOFTWARE")
-        os.system("dpkg -l | grep '^ii' | awk '{print $2, $3}' | head -n 30")
+        os.system("dpkg -l | grep '^ii' | awk '{print $2, $3}' | head -n 30 2>/dev/null")
         count = run("dpkg -l | grep '^ii' | wc -l")
         cprint(f"\n  Total paquetes instalados: {count}", C.YELLOW)
 
@@ -372,7 +372,7 @@ def auto_update_neuroaudit():
     try:
         with urllib.request.urlopen(GITHUB_RAW_URL) as r:
             with open(__file__, "wb") as f: f.write(r.read())
-        cprint("✓ v6.5.0 Instalada. Reinicie.", C.GREEN); sys.exit()
+        cprint(f"✓ v{VERSION} Instalada. Reinicie.", C.GREEN); sys.exit()
     except: cprint("Error de conexión.", C.RED)
 
 # ── Interfaz ───────────────────────────────────────────────

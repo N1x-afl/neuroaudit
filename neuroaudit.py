@@ -161,7 +161,8 @@ class Linux:
     @staticmethod
     def software_inventory():
         section("INVENTARIO DE SOFTWARE")
-        os.system("dpkg -l | grep '^ii' | awk '{print $2, $3}' | head -n 30 2>/dev/null")
+        output = run("dpkg -l | grep '^ii' | awk '{print $2, $3}' | head -n 30 2>/dev/null")
+        print(output)
         count = run("dpkg -l | grep '^ii' | wc -l")
         cprint(f"\n  Total paquetes instalados: {count}", C.YELLOW)
 

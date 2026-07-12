@@ -3,7 +3,8 @@
 # NEUROAUDIT v6.7.0 - Security & IT Suite
 # Developed by: Felipe Soluciones IT
 # ===========================================================
-# - NEW: Módulo 12 — Auditoría de Servidor
+# - FIX: Módulo 9 — Auto-actualización robusta con validación
+# - PREV: Módulo 12 — Auditoría de Servidor
 #         Submenú con 5 checks: Firewall, SUID/SGID, Accesos
 #         fallidos, Procesos anómalos, Conexiones sospechosas.
 #         Export JSON consolidado al finalizar.
@@ -25,7 +26,7 @@ import urllib.request
 import urllib.error
 
 # ── Configuración Core ─────────────────────────────────────
-VERSION      = "6.7.0"
+VERSION      = "6.7.1"
 SYSTEM_NAME  = "NEUROAUDIT - Security & IT Suite"
 DEVELOPER    = "Felipe Soluciones IT"
 GITHUB_USER  = "N1x-afl"
@@ -720,11 +721,58 @@ def run_export():
     cprint(f"  ✓ Reporte JSON guardado en: {path}", C.GREEN)
 
 def auto_update_neuroaudit():
+    section("ACTUALIZAR SUITE NEUROAUDIT")
+    cprint(f"\n  Versión actual : v{VERSION}", C.CYAN)
+    cprint(f"  Fuente         : {GITHUB_RAW_URL}\n", C.GRAY)
+    cprint("  [*] Descargando última versión desde GitHub...", C.CYAN)
     try:
-        with urllib.request.urlopen(GITHUB_RAW_URL) as r:
-            with open(__file__, "wb") as f: f.write(r.read())
-        cprint(f"✓ v{VERSION} Instalada. Reinicie.", C.GREEN); sys.exit()
-    except: cprint("Error de conexión.", C.RED)
+        req = urllib.request.Request(
+            GITHUB_RAW_URL,
+            headers={"User-Agent": f"NeuroAudit/{VERSION}", "Cache-Control": "no-cache"}
+        )
+        with urllib.request.urlopen(req, timeout=15) as r:
+            nueva = r.read()
+
+        # Validar que la descarga es un script Python válido de NeuroAudit
+        if b"def main" not in nueva or b"NEUROAUDIT" not in nueva:
+            cprint("  ✗ Descarga inválida o corrupta. Abortando sin cambios.", C.RED)
+            return
+
+        # Extraer versión nueva para mostrarla
+        version_nueva = "desconocida"
+        for line in nueva.decode("utf-8", errors="ignore").splitlines():
+            if line.strip().startswith("VERSION"):
+                try:
+                    version_nueva = line.split('"')[1]
+                except IndexError:
+                    pass
+                break
+
+        if version_nueva == VERSION:
+            cprint(f"  ✓ Ya tenés la última versión (v{VERSION}). No hay nada que actualizar.", C.GREEN)
+            return
+
+        cprint(f"  ✓ Nueva versión disponible: v{version_nueva}", C.GREEN)
+        confirmar = input(f"\n  ¿Actualizar de v{VERSION} → v{version_nueva}? [s/N]: ").strip().lower()
+        if confirmar != "s":
+            cprint("  Actualización cancelada.", C.YELLOW)
+            return
+
+        # Escribir el nuevo script
+        script_path = os.path.abspath(__file__)
+        with open(script_path, "wb") as f:
+            f.write(nueva)
+
+        cprint(f"\n  ✓ NeuroAudit actualizado a v{version_nueva} correctamente.", C.GREEN, bold=True)
+        cprint("  → Reiniciá NeuroAudit para usar la nueva versión.", C.CYAN)
+        sys.exit(0)
+
+    except urllib.error.URLError as e:
+        cprint(f"  ✗ Sin conexión a GitHub: {e.reason}", C.RED)
+    except PermissionError:
+        cprint("  ✗ Sin permisos para escribir el archivo. Ejecutá con sudo.", C.RED)
+    except Exception as e:
+        cprint(f"  ✗ Error inesperado: {e}", C.RED)
 
 # ── Interfaz ───────────────────────────────────────────────
 

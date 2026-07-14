@@ -11,7 +11,7 @@
 **SHIELD EDITION v6.7.0**
 
 ![Python](https://img.shields.io/badge/Python-3.8%2B-blue?style=flat-square&logo=python)
-![Platform](https://img.shields.io/badge/Platform-Linux-green?style=flat-square&logo=linux)
+![Platform](https://img.shields.io/badge/Platform-Linux%20Only-green?style=flat-square&logo=linux)
 ![License](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)
 ![Version](https://img.shields.io/badge/Version-6.7.0-red?style=flat-square)
 
@@ -27,6 +27,10 @@ NeuroAudit es una herramienta de línea de comandos desarrollada en Python puro 
 
 No requiere dependencias externas fuera de la librería estándar de Python y las herramientas nativas del sistema (`ss`, `find`, `dpkg`, `journalctl`, etc.).
 
+> ⚠️ **Esta versión (Shield Edition) es exclusiva para Linux.**
+> El soporte para Windows fue discontinuado a partir de la v6.5.
+> Esta edición utiliza herramientas nativas de Linux (`journalctl`, `dpkg`, `ss`, `/proc`, `/etc/shadow`) que no están disponibles en Windows.
+
 ---
 
 ## Módulos disponibles
@@ -34,7 +38,7 @@ No requiere dependencias externas fuera de la librería estándar de Python y la
 | # | Módulo | Descripción |
 |---|--------|-------------|
 | 1 | **Hardware & Térmica** | CPU, RAM, temperatura, serial, uptime y diagnóstico de pasta térmica |
-| 2 | **Mantenimiento** | `apt update/upgrade`, limpieza de caché, reducción de logs, bypass HTTP |
+| 2 | **Mantenimiento** | `apt update/upgrade`, limpieza de caché, reducción de logs |
 | 3 | **Vulnerabilidad CVE (libcurl)** | Verificación puntual de libcurl4 contra CVE conocidos |
 | 4 | **Salud de Discos** | S.M.A.R.T. por dispositivo + uso de particiones con `df` |
 | 5 | **Red y Puertos** | Escaneo LAN con nmap + puertos en escucha con `ss` |
@@ -97,10 +101,10 @@ Ejecuta los 5 checks en secuencia y ofrece exportar todo a JSON.
 
 ### Requisitos
 - Python 3.8+
-- Linux (Debian/Ubuntu recomendado)
+- Linux (Debian / Ubuntu / Kali / Zorin / Arch / Fedora)
 - `sudo` / acceso root para módulos de auditoría
 
-### Instalación rápida
+### Opción A — Instalador automático (recomendado)
 
 ```bash
 git clone https://github.com/N1x-afl/neuroaudit.git
@@ -109,9 +113,42 @@ chmod +x instalar_neuroaudit.sh
 sudo ./instalar_neuroaudit.sh
 ```
 
-El instalador crea un virtualenv, instala dependencias y genera el wrapper `/usr/local/bin/neuroaudit`.
+El instalador verifica Python3, copia el script a `/usr/local/bin/neuroaudit`, da permisos y ofrece instalar dependencias opcionales.
 
-### Ejecución
+### Opción B — Instalación manual
+
+Usá este método si el instalador no funciona o preferís hacerlo paso a paso:
+
+```bash
+# 1. Clonar el repositorio
+git clone https://github.com/N1x-afl/neuroaudit.git
+cd neuroaudit
+
+# 2. Copiar al sistema
+sudo cp neuroaudit.py /usr/local/bin/neuroaudit
+
+# 3. Dar permisos de ejecución
+sudo chmod +x /usr/local/bin/neuroaudit
+
+# 4. Verificar instalación
+head -1 /usr/local/bin/neuroaudit
+# Debe mostrar: #!/usr/bin/env python3
+
+# 5. Ejecutar
+sudo neuroaudit
+```
+
+### Opción C — Sin instalar (ejecución directa)
+
+```bash
+git clone https://github.com/N1x-afl/neuroaudit.git
+cd neuroaudit
+sudo python3 neuroaudit.py
+```
+
+---
+
+## Ejecución
 
 ```bash
 sudo neuroaudit
@@ -126,8 +163,9 @@ Desde el menú principal, opción **[9]** descarga la última versión desde `ma
 O manualmente:
 
 ```bash
-cd ~/ruta/neuroaudit
+cd ~/neuroaudit
 git pull
+sudo cp neuroaudit.py /usr/local/bin/neuroaudit
 ```
 
 ---
@@ -144,13 +182,43 @@ Todos se guardan en el home del usuario que invocó `sudo`.
 
 ---
 
+## Solución de problemas frecuentes
+
+### `bash: neuroaudit: orden no encontrada`
+El script no está en el PATH. Usá la instalación manual (Opción B) o ejecutalo directamente:
+```bash
+sudo python3 ~/neuroaudit/neuroaudit.py
+```
+
+### `./instalar_neuroaudit.sh: No existe el fichero o el directorio`
+```bash
+# Asegurate de estar dentro de la carpeta del repo
+cd ~/neuroaudit
+chmod +x instalar_neuroaudit.sh
+sudo ./instalar_neuroaudit.sh
+```
+
+### `Permission denied`
+```bash
+sudo chmod +x /usr/local/bin/neuroaudit
+```
+
+### Módulos que muestran `N/A`
+Algunos módulos requieren herramientas adicionales:
+```bash
+sudo apt install lm-sensors smartmontools nmap
+sudo sensors-detect   # para temperatura de CPU
+```
+
+---
+
 ## Changelog
 
 | Versión | Cambios |
 |---------|---------|
 | **6.7.0** | Módulo 12 — Auditoría de Servidor (Firewall, SUID/SGID, Accesos, Procesos, Conexiones) |
 | **6.6.0** | Módulo 11 — CVE Scan real via OSV.dev Batch API |
-| **6.5.0** | Módulo 10 — Auditoría de Permisos y Usuarios |
+| **6.5.0** | Módulo 10 — Auditoría de Permisos y Usuarios · Discontinuado soporte Windows |
 | **6.x** | Versiones anteriores: Hardware, Mantenimiento, Red, Discos, Eventos, Inventario |
 
 ---
@@ -163,5 +231,5 @@ GitHub: [@N1x-afl](https://github.com/N1x-afl)
 ---
 
 <div align="center">
-<sub>NeuroAudit — Security & IT Suite · Shield Edition</sub>
+<sub>NeuroAudit — Security & IT Suite · Shield Edition · Linux Only</sub>
 </div>

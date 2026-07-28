@@ -3,8 +3,10 @@
 # NEUROAUDIT v6.7.0 - Security & IT Suite
 # Developed by: Felipe Soluciones IT
 # ===========================================================
-# - FIX: Módulo 9 — Auto-actualización robusta con validación
-# - PREV: Módulo 12 — Auditoría de Servidor
+# - FIX: Módulo 1 — Detección de temperatura multi-plataforma
+#         AMD Ryzen (Tctl/k10temp), Intel (coretemp), ARM y
+#         fallback a sysfs si lm-sensors no está instalado.
+# - PREV: Módulo 9 — Auto-actualización robusta con validación
 #         Submenú con 5 checks: Firewall, SUID/SGID, Accesos
 #         fallidos, Procesos anómalos, Conexiones sospechosas.
 #         Export JSON consolidado al finalizar.
@@ -26,7 +28,7 @@ import urllib.request
 import urllib.error
 
 # ── Configuración Core ─────────────────────────────────────
-VERSION      = "6.7.1"
+VERSION      = "6.7.2"
 SYSTEM_NAME  = "NEUROAUDIT - Security & IT Suite"
 DEVELOPER    = "Felipe Soluciones IT"
 GITHUB_USER  = "N1x-afl"
@@ -95,21 +97,57 @@ class Linux:
         cpu = run("grep -m1 'model name' /proc/cpuinfo | cut -d: -f2").strip()
         ram = run("free -h | grep Mem | awk '{print $3\" / \"$2}'")
         uptime = run("uptime -p")
+        # Detección de temperatura multi-plataforma por orden de prioridad
         sensors_out = run("sensors 2>/dev/null")
-        m = re.search(r"(?:Package id 0|Core 0|temp1):\s+[+\-]?(\d+\.\d+)", sensors_out)
-        temp_cpu = float(m.group(1)) if m else None
+        temp_cpu = None
+        sensor_nombre = "N/A"
+        sensor_tipo = "desconocido"
+
+        SENSORES = [
+            # (regex, nombre display, tipo hardware)
+            (r"Tctl:\s+[+\-]?(\d+\.\d+)",          "Tctl",          "AMD Ryzen (k10temp)"),
+            (r"Tccd1:\s+[+\-]?(\d+\.\d+)",          "Tccd1",         "AMD Ryzen CCD1"),
+            (r"Package id 0:\s+[+\-]?(\d+\.\d+)",   "Package id 0",  "Intel (coretemp)"),
+            (r"Core 0:\s+[+\-]?(\d+\.\d+)",         "Core 0",        "Intel Core"),
+            (r"temp1:\s+[+\-]?(\d+\.\d+)",          "temp1",         "Genérico"),
+            (r"CPU:\s+[+\-]?(\d+\.\d+)",            "CPU",           "Genérico ARM/otro"),
+        ]
+
+        if not sensors_out:
+            # Fallback: leer directo desde sysfs (sin lm-sensors)
+            for path in [
+                "/sys/class/thermal/thermal_zone0/temp",
+                "/sys/class/hwmon/hwmon0/temp1_input",
+            ]:
+                val = run(f"cat {path} 2>/dev/null")
+                if val and val.isdigit():
+                    temp_cpu = float(val) / 1000
+                    sensor_nombre = path.split("/")[-1]
+                    sensor_tipo = "sysfs (sin lm-sensors)"
+                    break
+        else:
+            for patron, nombre, tipo in SENSORES:
+                m = re.search(patron, sensors_out)
+                if m:
+                    temp_cpu = float(m.group(1))
+                    sensor_nombre = nombre
+                    sensor_tipo = tipo
+                    break
 
         print(f"  SERIAL : {serial if serial else 'No detectable'}")
         print(f"  CPU    : {cpu}")
-        print(f"  TEMP   : {temp_cpu}°C" if temp_cpu else "  TEMP   : N/A")
+        if temp_cpu:
+            print(f"  TEMP   : {temp_cpu}°C  [sensor: {sensor_nombre} — {sensor_tipo}]")
+        else:
+            print(f"  TEMP   : N/A  (instalá lm-sensors: sudo apt install lm-sensors)")
         print(f"  RAM    : {ram} en uso")
         print(f"  UPTIME : {uptime}")
 
         if temp_cpu:
             cprint("\n  [ Diagnóstico de Pasta Térmica ]", C.YELLOW)
-            if temp_cpu < 60: cprint(f"  ✓ Estado Óptimo: {temp_cpu}°C", C.GREEN)
+            if temp_cpu < 60:   cprint(f"  ✓ Estado Óptimo: {temp_cpu}°C", C.GREEN)
             elif temp_cpu < 80: cprint(f"  ⚠ Temperatura Elevada: {temp_cpu}°C", C.YELLOW)
-            else: cprint(f"  ✗ CRÍTICO: {temp_cpu}°C", C.RED, bold=True)
+            else:               cprint(f"  ✗ CRÍTICO: {temp_cpu}°C — Revisá refrigeración", C.RED, bold=True)
 
     @staticmethod
     def maintenance():

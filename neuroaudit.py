@@ -3,10 +3,10 @@
 # NEUROAUDIT v6.7.0 - Security & IT Suite
 # Developed by: Felipe Soluciones IT
 # ===========================================================
-# - FIX: Módulo 1 — Detección de temperatura multi-plataforma
-#         AMD Ryzen (Tctl/k10temp), Intel (coretemp), ARM y
-#         fallback a sysfs si lm-sensors no está instalado.
-# - PREV: Módulo 9 — Auto-actualización robusta con validación
+# - NEW: Módulo 1 — Diagnóstico de pasta térmica con stress test
+#         Umbrales por tipo CPU (Intel/AMD Tctl), delta idle→carga,
+#         instalación automática de stress si no está presente.
+# - PREV: Módulo 1 — Detección de temperatura multi-plataforma
 #         Submenú con 5 checks: Firewall, SUID/SGID, Accesos
 #         fallidos, Procesos anómalos, Conexiones sospechosas.
 #         Export JSON consolidado al finalizar.
@@ -28,7 +28,7 @@ import urllib.request
 import urllib.error
 
 # ── Configuración Core ─────────────────────────────────────
-VERSION      = "6.7.2"
+VERSION      = "6.7.3"
 SYSTEM_NAME  = "NEUROAUDIT - Security & IT Suite"
 DEVELOPER    = "Felipe Soluciones IT"
 GITHUB_USER  = "N1x-afl"
@@ -144,10 +144,90 @@ class Linux:
         print(f"  UPTIME : {uptime}")
 
         if temp_cpu:
+            # Determinar umbrales según tipo de sensor
+            es_amd_tctl = sensor_nombre == "Tctl"
+            umbral_elevado = 70 if es_amd_tctl else 60
+            umbral_critico = 95 if es_amd_tctl else 85
+
             cprint("\n  [ Diagnóstico de Pasta Térmica ]", C.YELLOW)
-            if temp_cpu < 60:   cprint(f"  ✓ Estado Óptimo: {temp_cpu}°C", C.GREEN)
-            elif temp_cpu < 80: cprint(f"  ⚠ Temperatura Elevada: {temp_cpu}°C", C.YELLOW)
-            else:               cprint(f"  ✗ CRÍTICO: {temp_cpu}°C — Revisá refrigeración", C.RED, bold=True)
+            cprint(f"  Temperatura idle  : {temp_cpu}°C", C.CYAN)
+
+            # Verificar si stress está disponible
+            stress_ok = bool(shutil.which("stress"))
+
+            if not stress_ok:
+                cprint("\n  [!] 'stress' no está instalado.", C.YELLOW)
+                instalar = input("  ¿Instalarlo ahora para diagnóstico completo? [s/N]: ").strip().lower()
+                if instalar == "s":
+                    ret = os.system("sudo apt install stress -y > /dev/null 2>&1")
+                    stress_ok = (ret == 0)
+                    if stress_ok:
+                        cprint("  ✓ stress instalado correctamente.", C.GREEN)
+                    else:
+                        cprint("  ✗ No se pudo instalar stress.", C.RED)
+
+            if stress_ok:
+                nucleos = run("nproc").strip() or "2"
+                cprint(f"\n  [*] Estresando CPU {nucleos} núcleos por 10 segundos...", C.CYAN)
+                os.system(f"stress --cpu {nucleos} --timeout 10 > /dev/null 2>&1")
+                time.sleep(1)  # pequeña pausa para que sensors se actualice
+
+                # Leer temperatura bajo carga
+                temp_carga = None
+                sensors_carga = run("sensors 2>/dev/null")
+                if sensors_carga:
+                    for patron, nombre, tipo in SENSORES:
+                        m2 = re.search(patron, sensors_carga)
+                        if m2:
+                            temp_carga = float(m2.group(1))
+                            break
+                else:
+                    for path in ["/sys/class/thermal/thermal_zone0/temp",
+                                 "/sys/class/hwmon/hwmon0/temp1_input"]:
+                        val = run(f"cat {path} 2>/dev/null")
+                        if val and val.isdigit():
+                            temp_carga = float(val) / 1000
+                            break
+
+                if temp_carga:
+                    delta = round(temp_carga - temp_cpu, 1)
+                    cprint(f"  Temperatura carga : {temp_carga}°C", C.CYAN)
+                    cprint(f"  Delta (Δ)         : {delta}°C", C.CYAN)
+                    print()
+
+                    # Diagnóstico por delta
+                    if delta < 20:
+                        cprint("  ✓ Pasta térmica en buen estado.", C.GREEN, bold=True)
+                    elif delta < 35:
+                        cprint("  ⚠ Pasta posiblemente degradada.", C.YELLOW, bold=True)
+                        cprint("    → Considerá limpieza y reemplazo de pasta térmica.", C.YELLOW)
+                    else:
+                        cprint("  ✗ Delta elevado — Cambio de pasta recomendado.", C.RED, bold=True)
+                        cprint("    → Temperatura sube demasiado rápido bajo carga.", C.RED)
+
+                    # Diagnóstico por temperatura absoluta bajo carga
+                    print()
+                    if temp_carga < umbral_elevado:
+                        cprint(f"  ✓ Temperatura bajo carga aceptable: {temp_carga}°C", C.GREEN)
+                    elif temp_carga < umbral_critico:
+                        cprint(f"  ⚠ Temperatura bajo carga elevada: {temp_carga}°C", C.YELLOW)
+                        cprint(f"    → Revisá ventilación y limpieza de cooler.", C.YELLOW)
+                    else:
+                        cprint(f"  ✗ CRÍTICO: {temp_carga}°C — Riesgo de throttling o daño", C.RED, bold=True)
+                        cprint(f"    → Apagá el equipo y revisá el sistema de refrigeración.", C.RED)
+                else:
+                    cprint("  ⚠ No se pudo leer temperatura bajo carga.", C.YELLOW)
+            else:
+                # Diagnóstico solo con temperatura idle
+                print()
+                if temp_cpu < umbral_elevado:
+                    cprint(f"  ✓ Temperatura idle aceptable: {temp_cpu}°C", C.GREEN)
+                elif temp_cpu < umbral_critico:
+                    cprint(f"  ⚠ Temperatura idle elevada: {temp_cpu}°C", C.YELLOW)
+                    cprint(f"    → Instalá stress para diagnóstico completo.", C.YELLOW)
+                else:
+                    cprint(f"  ✗ CRÍTICO en idle: {temp_cpu}°C", C.RED, bold=True)
+                    cprint(f"    → Revisá refrigeración inmediatamente.", C.RED)
 
     @staticmethod
     def maintenance():
